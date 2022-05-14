@@ -26,6 +26,20 @@ class Cleaner:
         self.handle_game_date()
         self.remove_cols()
         self.simplify_events()
+        self.base_runner_class()
+    
+    # Batter name (https://www.mlb.com/player/player_id from data source)
+    # Pitch (type, release_speed, release_pos_x, release_pos_z)
+    # zone ?
+    # away team
+    # pfx_x, pfx_z, plate_x, plate_z
+    # vx0, vy0, vy0, ax, ay, az
+    # effective_speed, release_spin_rate, release_extension, release_pos_y
+    # estimated_ba_using_speedangle, babip_value
+    # pitch_name
+    # spin_axis
+    # bat_event ?
+    
     
     #Removes headers that found their way into the dataset
     def clean_header(self):
@@ -106,7 +120,7 @@ class Cleaner:
         except:
             true_name = 'unknwon'
             
-            return true_name
+        return true_name
         
     #Separate game_date to year, month, and day columns and convert column
     def handle_game_date(self):
@@ -114,7 +128,7 @@ class Cleaner:
         self.data['game_month'] = self.data['game_date'].apply(lambda x: self.separate_date(x, 'month'))
         self.data['game_day'] = self.data['game_date'].apply(lambda x: self.separate_date(x, 'day'))
         
-        self.data['game_date'].to_datetime()
+        self.data['game_date'] = pd.to_datetime(self.data.game_date)
     
     def separate_date(self, date, time_cat):
         date_sep = date.split('-')
@@ -126,7 +140,7 @@ class Cleaner:
         if time_cat.lower() == 'day':
             return date_sep[2]
         
-    #Turn base runner columns into binary classification
+    # Turn base runner columns into binary classification
     def base_runner_class(self):
         self.data['on_1b'].fillna(0, inplace=True)
         self.data['on_2b'].fillna(0, inplace=True)
