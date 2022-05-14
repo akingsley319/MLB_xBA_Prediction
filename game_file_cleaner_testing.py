@@ -20,11 +20,16 @@ test_c.handle_game_date()
 test_c.remove_cols()
 test_c.simplify_events()
 
+test_c.data.isna().sum()
 
 data = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
 test_d = cgf.Cleaner(data)
 test_d.clean_data()
 
-tester = test_c.data.head(10)
+tester = test_d.data.head(10)
 
-test_c.data.equals(test_d.data)
+test_d.data.isna().sum()
+
+
+
+

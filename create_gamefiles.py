@@ -10,3 +10,4 @@ ga.game_files(seasons=(2017,2021))
 df = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
 
 data_head = df.head(10)
+df.dtypes()
