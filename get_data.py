@@ -9,6 +9,7 @@ from time import sleep
 from urllib.error import HTTPError
 import pandas as pd
 import numpy as np
+import requests
 
 def savant_search(season, team, home_road, csv=False, sep=';'):
     """Return detail-level Baseball Savant search results.
