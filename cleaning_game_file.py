@@ -10,13 +10,14 @@ import pandas as pd
 class Cleaner:
     def __init__(self, data):
         self.data = data
-        self.del_col_list = ['sv_id','des','hit_location','inning_topbot',
-                'hc_x','hc_y','sz_top','sz_bot','launch_speed',
-                'launch_angle','estimated_woba_using_speedangle','woba_value',
-                'woba_denom','iso_value','launch_speed_angle','post_home_score',
+        self.del_col_list = ['des','hit_location','inning_topbot',
+                'hc_x','hc_y','sz_top','sz_bot','post_home_score',
                 'post_away_score','post_bat_score','if_fielding_alignment',
                 'of_fielding_alignment','delta_home_win_exp','delta_run_exp',
                 'batter','pitcher','post_fld_score','hit_distance_sc']
+        self.del_maybe = ['estimated_woba_using_speedangle','woba_value',
+                'woba_denom','launch_speed_angle','launch_speed',
+                'launch_angle','iso_value']
     
     def clean_data(self):
         self.clean_header()
