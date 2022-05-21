@@ -6,18 +6,23 @@ Created on Wed May 11 17:43:22 2022
 """
 
 import pandas as pd
+import numpy as np
 
 class Cleaner:
-    def __init__(self, data):
+    def __init__(self, data, orig_data=None):
         self.data = data
         self.del_col_list = ['des','hit_location','inning_topbot',
                 'hc_x','hc_y','sz_top','sz_bot','post_home_score',
                 'post_away_score','post_bat_score','if_fielding_alignment',
                 'of_fielding_alignment','delta_home_win_exp','delta_run_exp',
-                'batter','pitcher','post_fld_score','hit_distance_sc']
+                'post_fld_score','hit_distance_sc', 'sv_id',
+                'launch_angle','launch_speed','launch_speed_angle']
         self.del_maybe = ['estimated_woba_using_speedangle','woba_value',
-                'woba_denom','launch_speed_angle','launch_speed',
-                'launch_angle','iso_value']
+                'woba_denom','iso_value','batter','pitcher']
+        if orig_data == None:
+            self.orig_data = self.data.copy()
+        else:
+            self.orig_data = orig_data
     
     def clean_data(self):
         self.clean_header()
@@ -29,6 +34,12 @@ class Cleaner:
         self.simplify_events()
         self.base_runner_class()
     
+    def clean_new(self):
+        self.clean_data()
+        self.game_type()
+        self.fill_ebus()
+        self.fill_median()
+        self.fill_median_by_year()
     # Batter name (https://www.mlb.com/player/player_id from data source)
     # Pitch (type, release_speed, release_pos_x, release_pos_z)
     # zone ?
@@ -36,11 +47,64 @@ class Cleaner:
     # pfx_x, pfx_z, plate_x, plate_z
     # vx0, vy0, vy0, ax, ay, az
     # effective_speed, release_spin_rate, release_extension, release_pos_y
-    # estimated_ba_using_speedangle, babip_value
     # pitch_name
     # spin_axis
     # bat_event ?
+    # fix game_advisory
     
+    # focus on regular season games
+    def game_type(self, games=['R']):
+        self.data.drop(self.data[~self.data.game_type.isin(games)].index, inplace=True)
+       
+    # fill missing estimated_ba_using_speedangle with event and multiple imputation
+    def fill_ebus(self, rem_list=['single','double','double_play','triple','triple_play']):
+        median_events = list(self.data.events.unique())
+        for item in rem_list:
+            median_events.remove(item)
+        self.replace_median('estimated_ba_using_speedangle', median_events)
+        # handle non-median missing data
+    
+    # fill with median and event:  woba_denom, babip_value, iso_value
+    def fill_median(self, cols=['woba_denom', 'babip_value', 'iso_value']):
+        for feature in cols:
+            self.replace_median(feature, list(self.data.events.unique()))
+    
+    # fill with median by year and event: estimated_woba_using_speedangle, woba_value
+    def fill_median_by_year(self):
+        year_list = list(self.data.game_year.unique())
+
+        self.replace_median('estimated_woba_using_speedangle', list(self.data.events.unique()), years=year_list)
+        self.replace_median('woba_value', list(self.data.events.unique()), years=year_list)
+    
+    # Median Fill base
+    def create_median_table(self, df_temp, category, events_list):
+        median_table = {}
+        temp_df = df_temp[df_temp[category].notnull()]
+        
+        for event in events_list:
+            median_val = np.median(temp_df[temp_df.events == event][category].astype(float))
+            median_table[event] = median_val
+            
+        return median_table
+
+    def replace_median(self, category, events_list, years=None):        
+        
+        def handle_median(event, default):
+            if event in events_list and pd.isnull(default):
+                med_val = median_table[event]
+                return med_val.astype(float)
+            else:
+                return float(default)
+            
+        if years == None:
+            self.data[category].astype('float')
+            median_table = self.create_median_table(self.orig_data, category, events_list)
+            self.data[category] = self.data.apply(lambda x: handle_median(x.events, x.estimated_ba_using_speedangle), axis=1)
+        else:
+            self.data[category].astype('float')
+            for year in years:
+                median_table = self.create_median_table(self.orig_data[self.orig_data.game_year == year], category, events_list)
+                self.data[self.data.game_year == year][category] = self.data[self.data.game_year == year].apply(lambda x: handle_median(x.events, x.estimated_ba_using_speedangle), axis=1)   
     
     #Removes headers that found their way into the dataset
     def clean_header(self):
@@ -167,10 +231,10 @@ class Cleaner:
         
         self.data.drop('description', axis=1, inplace=True)
         self.data.drop('type', axis=1, inplace=True)
-        self.data.drop('bb_type', axis=1, inplace=True)
+        #self.data.drop('bb_type', axis=1, inplace=True)
     
     def hit_simp(self, event):
-        #hit = ['single','double','home_run','triple']
+        hit = ['single','double','home_run','triple']
 
         field_out = ['field_out','grounded_into_double_play','force_out','double_play',
                      'sac_bunt','sac_fly','fielders_choice_out','fielders_choice',
@@ -196,8 +260,8 @@ class Cleaner:
         
         error = ['field_error']
         
-        #if event in hit:
-        #    return 'hit'
+        if event in hit:
+            return 'hit'
         if event in field_out:
             return 'field_out'
         elif event in runner_out:
