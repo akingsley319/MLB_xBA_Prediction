@@ -30,6 +30,23 @@ tester = test_d.data.head(10)
 
 test_d.data.isna().sum()
 
+test_clean = data.head(10)
+
+df_e = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
+test_e = cgf.Cleaner(df_e)
+test_e.clean_new()
+what = test_e.data[test_e.data.events == 'game_advisory']
 
 
+player_list = list(df_e.batter.unique()) + list(df_e.pitcher.unique())
 
+full_list = []
+for player in player_list:
+    if player not in full_list:
+        full_list.append(player)
+        
+len(full_list)
+
+import get_data as gd
+
+gd.player_by_id(669211)

@@ -10,6 +10,8 @@ from urllib.error import HTTPError
 import pandas as pd
 import numpy as np
 import requests
+from bs4 import BeautifulSoup
+import time
 
 def savant_search(season, team, home_road, csv=False, sep=';'):
     """Return detail-level Baseball Savant search results.
@@ -111,3 +113,24 @@ def game_files(seasons, teams=None):
                 else:
                     single_combination.to_csv('./data/game_files.csv', index=False, 
                                               sep=';')
+                    
+def player_by_id(player_id):
+    time.sleep(3)
+    
+    headers = {'User-Agent': 'This is my web scraping script, used for a school project; Contact me at akingsley@regis.edu'}
+    url = "https://www.mlb.com/player/" + str(player_id)
+    page = requests.get(url, headers = headers)
+    
+    soup = BeautifulSoup(page.content, "html.parser")
+    results = soup.find(id="player-header")
+    job_elements = results.find_all("span", class_="player-header--vitals-name")
+    
+    return job_elements[0].text
+
+def player_map(player_ids):
+    player_map = {}
+    
+    for player in player_ids:
+        player_map[player] = player_by_id(player)
+        
+    return player_map
