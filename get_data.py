@@ -115,7 +115,7 @@ def game_files(seasons, teams=None):
                                               sep=';')
                     
 def player_by_id(player_id):
-    time.sleep(3)
+    time.sleep(8)
     
     headers = {'User-Agent': 'This is my web scraping script, used for a school project; Contact me at akingsley@regis.edu'}
     url = "https://www.mlb.com/player/" + str(player_id)
@@ -123,9 +123,15 @@ def player_by_id(player_id):
     
     soup = BeautifulSoup(page.content, "html.parser")
     results = soup.find(id="player-header")
-    job_elements = results.find_all("span", class_="player-header--vitals-name")
+    if results == None:
+        return None
+    else:
+        job_elements = results.find_all("span", class_="player-header--vitals-name")
     
-    return job_elements[0].text
+    if len(job_elements) >= 1:
+        return job_elements[0].text
+    else:
+        return None
 
 def player_map(player_ids):
     player_map = {}
