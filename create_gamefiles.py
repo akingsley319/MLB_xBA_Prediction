@@ -21,3 +21,4 @@ player_mapping = ga.player_map(full_list)
 with open('data/player_map.csv', 'w') as f:
     for key in player_mapping.keys():
         f.write("%s; %s\n" % (key, player_mapping[key]))
+        

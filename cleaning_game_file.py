@@ -7,18 +7,21 @@ Created on Wed May 11 17:43:22 2022
 
 import pandas as pd
 import numpy as np
+import get_data as ga
+import csv
+import pickle
 
 class Cleaner:
-    def __init__(self, data, orig_data=None):
+    def __init__(self, data, orig_data=None, ):
         self.data = data
         self.del_col_list = ['des','hit_location','inning_topbot',
                 'hc_x','hc_y','sz_top','sz_bot','post_home_score',
                 'post_away_score','post_bat_score','if_fielding_alignment',
                 'of_fielding_alignment','delta_home_win_exp','delta_run_exp',
-                'post_fld_score','hit_distance_sc', 'sv_id',
-                'launch_angle','launch_speed','launch_speed_angle']
-        self.del_maybe = ['estimated_woba_using_speedangle','woba_value',
-                'woba_denom','iso_value','batter','pitcher']
+                'post_fld_score','hit_distance_sc', 'sv_id','launch_angle',
+                'launch_speed','launch_speed_angle','woba_value','woba_denom',
+                'estimated_woba_using_speedangle','iso_value']
+        self.del_maybe = ['batter','pitcher']
         if orig_data == None:
             self.orig_data = self.data.copy()
         else:
@@ -37,10 +40,20 @@ class Cleaner:
     def clean_new(self):
         self.clean_data()
         self.game_type()
+        self.remove_from_events()
+        
+    def pitch_prep(self):
+        self.clean_new()
+        self.pitch_spin_euc()
+        self.pitch_data_clean()
+        
+    def fill_data(self):
         self.fill_ebus()
         self.fill_median()
         self.fill_median_by_year()
-    # Batter name (https://www.mlb.com/player/player_id from data source)
+        self.fill_players()
+        
+    # Batter name fix
     # Pitch (type, release_speed, release_pos_x, release_pos_z)
     # zone ?
     # away team
@@ -50,7 +63,110 @@ class Cleaner:
     # pitch_name
     # spin_axis
     # bat_event ?
-    # fix game_advisory
+    # events (single, double, double_play, triple, triple_play)
+    
+    # apply pitcher clustering to data
+    def pitch_data_clean(self):
+        pitch_features = ['release_speed','release_pos_x','release_pos_z',
+                 'pfx_x','pfx_z','plate_x','plate_z','vx0','vy0','vz0','ax',
+                 'ay','az', 'effective_speed','release_spin_rate', 
+                 'release_extension','release_pos_y','spin_x', 'spin_z']
+        
+        standardize = pickle.load(open('model.pkl', 'rb'))
+        dimension_reduction = pickle.load(open('model.pkl', 'rb'))
+        fuzzy_cluster = pickle.load(open('model.pkl', 'rb'))
+        
+        standardize.transform(self.data[pitch_features])
+        dimension_reduction.transform(standardize)
+        
+        dim_cols = []
+        for i in range(0,len(dimension_reduction[0])):
+            temp_column = []
+            
+            for row in dimension_reduction:
+                temp_column.append(row[i])
+            
+            column_name = 'attribute_' + str(i)
+            self.data[column_name] = temp_column
+            dim_cols.append(column_name)
+        
+        fuzzy_cluster.predict(self.data[dim_cols])
+    
+    # Orients pitch spin in same plane as other pitch stats
+    def pitch_spin_euc(self):
+        # Represents the spin rate on axis from 1st base to 3rd base
+        self.data['spin_x'] = self.data[['spin_axis','release_spin_rate']].apply(lambda x: 
+                    float(x.release_spin_rate) * np.sin(np.deg2rad(float(x.spin_axis))), 
+                    axis=1)
+        
+        # Represents the spin rate on axis from pitcher mound to home plate
+        self.data['spin_z'] = self.data[['spin_axis','release_spin_rate']].apply(lambda x: 
+                    float(x.release_spin_rate) * np.cos(np.deg2rad(float(x.spin_axis))), 
+                    axis=1)
+            
+    # retrieves player name based on player_id from data/player_map.csv or mlb.com and updates dataframe and data/player_map.csv
+    def fill_players(self):
+        full_list = self.unique_id()
+        player_map = self.update_player_map(full_list)
+        
+        for player_id in full_list:
+            self.data[self.data.pitcher == player_id]['pitcher_name'] = self.data[self.data.pitcher == player_id]['pitcher'].apply(lambda x: player_map[x])
+            self.data[self.data.batter == player_id]['batter_name'] = self.data[self.data.batter == player_id]['batter'].apply(lambda x: player_map[x])
+    
+    def update_player_map(self, full_list):
+        player_map = self.retrieve_player_map()
+        missing_players = []
+        
+        for player_id in full_list:
+            if (player_id not in list(player_map.keys()) or (player_map[player_id] == None)):
+                missing_players.append(player_id)
+        
+        for player_id in missing_players:
+            player_map[player_id] = ga.player_by_id(player_id)
+        
+        if len(missing_players) > 0:
+            print(missing_players)
+            self.write_to_player_map(player_map)
+        
+        return player_map
+    
+    def write_to_player_map(self, player_map):
+        with open('data/player_map.csv', 'w') as f:
+            f.truncate(0)
+            for key in player_map.keys():
+                f.write("%s; %s\n" % (key, player_map[key]))
+            f.close()
+    
+    def retrieve_player_map(self):
+        reader = open('data/player_map.csv', 'r+')
+        lines = reader.readlines()
+        
+        result = {}
+        for row in lines:
+            entry = row.split('; ')
+            if len(entry) != 2:
+                reader.write(row)
+                continue
+            key = entry[0]
+            if key in result:
+                pass
+            result[key] = entry[1]
+            
+        return result
+    
+    def unique_id(self):
+        player_list = list(self.data.batter.unique()) + list(self.data.pitcher.unique())
+
+        full_list = []
+        for player in player_list:
+            if player not in full_list:
+                full_list.append(player)
+            
+        return full_list
+
+    # removes game_advsory from events
+    def remove_from_events(self):
+        self.data.drop(self.data[self.data.events == 'game_advisory'].index, inplace=True)
     
     # focus on regular season games
     def game_type(self, games=['R']):
@@ -62,19 +178,22 @@ class Cleaner:
         for item in rem_list:
             median_events.remove(item)
         self.replace_median('estimated_ba_using_speedangle', median_events)
-        # handle non-median missing data
+        self.replace_median_bb_type('estimated_ba_using_speedangle', rem_list)
     
-    # fill with median and event:  woba_denom, babip_value, iso_value
-    def fill_median(self, cols=['woba_denom', 'babip_value', 'iso_value']):
-        for feature in cols:
-            self.replace_median(feature, list(self.data.events.unique()))
-    
-    # fill with median by year and event: estimated_woba_using_speedangle, woba_value
-    def fill_median_by_year(self):
-        year_list = list(self.data.game_year.unique())
-
-        self.replace_median('estimated_woba_using_speedangle', list(self.data.events.unique()), years=year_list)
-        self.replace_median('woba_value', list(self.data.events.unique()), years=year_list)
+    # These values were removed model after this was written
+# =============================================================================
+#     # fill with median and event:  woba_denom, babip_value, iso_value
+#     def fill_median(self, cols=['woba_denom', 'babip_value', 'iso_value']):
+#         for feature in cols:
+#             self.replace_median(feature, list(self.data.events.unique()))
+#     
+#     # fill with median by year and event: estimated_woba_using_speedangle, woba_value
+#     def fill_median_by_year(self):
+#         year_list = list(self.data.game_year.unique())
+# 
+#         self.replace_median('estimated_woba_using_speedangle', list(self.data.events.unique()), years=year_list)
+#         self.replace_median('woba_value', list(self.data.events.unique()), years=year_list)
+# =============================================================================
     
     # Median Fill base
     def create_median_table(self, df_temp, category, events_list):
@@ -87,7 +206,9 @@ class Cleaner:
             
         return median_table
 
-    def replace_median(self, category, events_list, years=None):        
+    def replace_median(self, category, events_list, orig_data_l=None, years=None):        
+        if orig_data_l == None:
+            orig_data_l = self.orig_data
         
         def handle_median(event, default):
             if event in events_list and pd.isnull(default):
@@ -98,13 +219,30 @@ class Cleaner:
             
         if years == None:
             self.data[category].astype('float')
-            median_table = self.create_median_table(self.orig_data, category, events_list)
-            self.data[category] = self.data.apply(lambda x: handle_median(x.events, x.estimated_ba_using_speedangle), axis=1)
+            median_table = self.create_median_table(orig_data_l, category, events_list)
+            self.data[category] = self.data.apply(lambda x: handle_median(x.events, x[category]), axis=1)
         else:
             self.data[category].astype('float')
             for year in years:
-                median_table = self.create_median_table(self.orig_data[self.orig_data.game_year == year], category, events_list)
-                self.data[self.data.game_year == year][category] = self.data[self.data.game_year == year].apply(lambda x: handle_median(x.events, x.estimated_ba_using_speedangle), axis=1)   
+                median_table = self.create_median_table(orig_data_l[orig_data_l.game_year == year], category, events_list)
+                self.data[self.data.game_year == year][category] = self.data[self.data.game_year == year].apply(lambda x: handle_median(x.events, x[category]), axis=1)   
+    
+    def replace_median_bb_type(self, category, events_list, orig_data_l=None):
+        if orig_data_l == None:
+            orig_data_l = self.orig_data
+        
+        def handle_median(event, default):
+            if event in events_list and pd.isnull(default):
+                med_val = median_table[event]
+                return med_val.astype(float)
+            else:
+                return float(default)
+        
+        bb_type_list = self.data[self.data.bb_type.notnull()].bb_type.unique()
+        for item in bb_type_list:
+            self.data[category].astype('float')
+            median_table = self.create_median_table(orig_data_l[orig_data_l.bb_type == item], category, events_list)
+            self.data[self.data.bb_type == item][category] = self.data[self.data.bb_type == item].apply(lambda x: handle_median(x.events, x[category]), axis=1)
     
     #Removes headers that found their way into the dataset
     def clean_header(self):
