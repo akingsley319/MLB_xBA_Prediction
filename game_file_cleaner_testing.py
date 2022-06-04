@@ -37,9 +37,19 @@ player_map = test_obj.retrieve_player_map()
 data = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
 test_data = cgf.Cleaner(data)
 test_data.pitch_prep()
-test_data.pitch_spin_euc()
+#test_data.pitch_spin_euc()
 
 import pitcher_model as pm
-pitch_mod = pm.Pitcher(test_data.data)
-test_df = pitch_mod.full_package()
 
+test_df_copy = test_data.data.copy()
+pitch_mod = pm.Pitcher(test_df_copy)
+pitch_mod.full_package(test_df_copy)
+
+data_orig = pitch_mod.remove_nulls(test_df_copy)
+
+df = pitch_mod.standardize_data(data_orig)
+df_dr = pitch_mod.dimensionality_reduction(df, data_orig, covar_goal=0.95)
+
+df_clus = pitch_mod.pitcher_pitch_cluster(df_dr, pitch_limit=150, mini=-1, maxi=3)
+
+score_max, n_clus = pm.fuzzy__clustering(df_clus)

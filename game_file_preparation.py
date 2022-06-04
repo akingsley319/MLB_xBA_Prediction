@@ -7,6 +7,9 @@ Created on Wed May 25 21:03:55 2022
 
 import pandas as pd
 
+from random import sample
+
+
 class GamePrep:
     def __init__(self, data):
         self.data = data
@@ -15,6 +18,95 @@ class GamePrep:
                      'sac_bunt','sac_fly','fielders_choice_out','fielders_choice',
                      'sac_fly_double_play','triple_play','sac_bunt_double_play',
                      'strikeout','strikeout_double_play','field_error']
+    
+    # splits up data based on batter
+    def train_test_batters(self, file_name_train, file_name_test, test_split=0.20):
+        full_list = []
+        
+        for batter in self.data.batter.unique():
+            for year in self.data[self.data.batter == batter].game_year.unique():
+                full_list.append([batter,year])
+                
+        test_batter_num = round(len(full_list)*test_split)
+        
+        test_set_batters = sample(full_list, test_batter_num)
+        for element in test_set_batters:
+            full_list.remove(element)
+        
+        train_set = self.return_df(full_list, pitcher=False)
+        test_set = self.return_df(test_set_batters, pitcher=False)
+        
+        train_set.to_csv(file_name_train)
+        test_set.to_csv(file_name_test)
+        
+        return train_set, test_set
+    
+    # splits up data based on pitcher
+    def train_test_pitchers(self, file_name_train, file_name_test, test_split=0.20):
+        full_list = []
+        
+        for pitcher in self.data.pitcher.unique():
+            for year in self.data[self.data.pitcher == pitcher].game_year.unique():
+                full_list.append([pitcher,year])
+                
+        test_pitcher_num = round(len(full_list)*test_split)
+        
+        test_set_pitchers = sample(full_list, test_pitcher_num)
+        for element in test_set_pitchers:
+            full_list.remove(element)
+            
+        print("Train: " + str(len(full_list)))
+        print("Test: " + str(len(test_set_pitchers)))
+        
+        train_set = self.return_df(full_list)
+        print('Done with training set')
+        test_set = self.return_df(test_set_pitchers)
+        print('Done with testing set')
+        
+        train_set.to_csv(file_name_train)
+        test_set.to_csv(file_name_test)
+        
+        return train_set, test_set
+        
+    def pitch_limiter(self, data=None, pitch_limit=100):
+        if data is not None:
+            data = self.remove_nulls(data)
+        else:
+            data = self.remove_nulls(self.data)
+        
+        temp_df = pd.DataFrame()
+        
+        for pitcher in data.pitcher.unique():
+            for game_year in data.game_year.unique():
+                
+                data_temp = data[(data.pitcher==pitcher) & (data.game_year==game_year)].copy()
+                
+                if len(data_temp.index) >= pitch_limit:
+                    temp_df = temp_df.append(data_temp)
+                    # data.drop(data[data_temp].index, inplace=True)
+                    
+        return temp_df
+    
+    # Returns selection of pitchers based on list of attributes [player_id, game_year]
+    def return_df(self, array_players, pitcher=True):
+        temp_df = pd.DataFrame()
+        counter = 0
+        max_counter = len(array_players)
+        for entry in array_players:
+            if pitcher == True:
+                df_app = self.data[(self.data.pitcher == entry[0]) & (self.data.game_year == entry[1])]
+            elif pitcher == False:
+                df_app = self.data[(self.data.batter == entry[0]) & (self.data.game_year == entry[1])]
+            temp_df = temp_df.append(df_app)
+            counter += 1
+            print(str(counter) + '/' + str(max_counter))
+        return temp_df
+        
+    
+    def remove_nulls(self, data):
+        for column in data.columns:
+            data.drop(data[data[column].isna()].index, inplace=True)
+        return data.reindex()
     
     # Retunrs batter prepared files
     # xba_calc: average="full expected batting average", hit="chance of getting at least one hit"

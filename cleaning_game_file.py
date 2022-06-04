@@ -45,7 +45,7 @@ class Cleaner:
     def pitch_prep(self):
         self.clean_new()
         self.pitch_spin_euc()
-        self.pitch_data_clean()
+        #self.pitch_data_clean()
         
     def fill_data(self):
         self.fill_ebus()
