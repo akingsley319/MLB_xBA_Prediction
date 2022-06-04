@@ -8,6 +8,8 @@ Created on Wed May 11 17:43:22 2022
 import pandas as pd
 import math
 
+import csv
+
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
@@ -16,6 +18,8 @@ from sklearn.decomposition import PCA
 from pickle import dump
 
 from fcmeans import FCM
+
+import game_file_preparation as gfp
 
 
 class Pitcher:
@@ -34,14 +38,19 @@ class Pitcher:
     
     # standardize data, pca dimensionality reduction, kmeans clustering of 
     # individual pitcher repertoires, fuzzy c clustering of ideal pitches
-    def full_package(self, covar_goal=0.95, pitch_limit = 100, mini=-1, maxi=3):
+    def full_package(self, covar_goal=0.95, mini=-1, maxi=3, pitch_limiter=100):
         data_orig = self.remove_nulls(self.df.copy())
         
         data = self.standardize_data(data_orig)
         data = self.dimensionality_reduction(data, data_orig, covar_goal)
-        data = self.pitcher_pitch_cluster(data, pitch_limit, mini, maxi)
         
-        score_max, n_clus = self.fuzzy__clustering(data)
+        if pitch_limiter > 0:
+            game_prep = gfp.GamePrep(data)
+            data = game_prep.pitch_limiter(pitch_limit=pitch_limiter)
+        
+        data = self.pitcher_pitch_cluster(data, mini, maxi)
+        
+        score_max, n_clus = self.fuzzy_clustering(data)
         
         return data, score_max, n_clus
     
@@ -49,14 +58,24 @@ class Pitcher:
     def remove_nulls(self, data):
         for column in data.columns:
             data.drop(data[data[column].isna()].index, inplace=True)
-                           
-        return data
+        return data.reindex()
     
     # Fuzzy Clustering of ideal pitch data for pitchers
+    # Uses best silhouette score for k-means to determine number of clusters
     def fuzzy_clustering(self, data, mini=10, maxi=60):
+        if 'pitch_type' in data.columns:
+            data.drop(columns=['pitch_type'], inplace=True)
+        if 'pitch_name' in data.columns:
+            data.drop(columns=['pitch_name'], inplace=True)
+        if 'pitcher' in data.columns:
+            data.drop(columns=['pitcher'], inplace=True)
+        if 'game_year' in data.columns:
+            data.drop(columns=['game_year'], inplace=True)
+        
         score_max, n_clus, n_init = self.cluster_k_def(mini, maxi, data, 0)
         
-        my_model = FCM(n_clusters=n_clus) # we use two cluster as an example
+        data = data.to_numpy()
+        my_model = FCM(n_clusters=n_clus)
         my_model.fit(data) ## X, numpy array. rows:samples columns:features
         
         with open('models/fuzzy_clustering_pitching_data.pkl', 'wb') as output_file:
@@ -80,8 +99,13 @@ class Pitcher:
     
     # Dimensionality Reduction; done together to keep consistent measurements
     def dimensionality_reduction(self, data, orig_data, covar_goal):
-        pca = PCA(covar_goal, random_state=42)
-        np_pca = pca.fit_transform(data[self.pitch_features])
+        temp_data = data[self.pitch_features]
+        
+        for col in temp_data.columns:
+            temp_data[col].astype('float')
+        
+        pca = PCA(n_components=covar_goal, random_state=42)
+        np_pca = pca.fit_transform(temp_data)
         
         with open('models/pca_pitches.pkl','wb') as output_file:
             dump(pca, output_file)
@@ -102,33 +126,52 @@ class Pitcher:
         return df_pca
     
     # clusters pitches by pitcher and year based on best sillhouette score
-    def pitcher_pitch_cluster(self, data, pitch_limit, mini, maxi):
-        pitch_attr = self.count_columns(data)
-        pitch_df = self.empty_db(pitch_attr)
+    def pitcher_pitch_cluster(self, data, mini, maxi):
+        if 'pitch_type' in data.columns:
+            data.drop(columns=['pitch_type'], inplace=True)
+        if 'pitch_name' in data.columns:
+            data.drop(columns=['pitch_name'], inplace=True)
         
-        pitch_limiter = self.pitch_limiter(data, pitch_limit)
+        with open('data/pitcher_repertoire_clusters.csv', 'w', newline='') as fp:
+            f = csv.writer(fp)
+            f.writerow(list(data.columns))
         
+        pitch_attr = [element for element in list(data.columns) if element not in ['pitcher','game_year']]
+        pitch_df = pd.DataFrame(columns=data.columns)
+
         counter = 0
-        max_counter = len(pitch_limiter.keys())
-        progress = 0
-        for pitcher in pitch_limiter.keys():
-            counter += 1
-            print(str(counter) + '/' + str(max_counter))
-            
-            for year in pitch_limiter[pitcher]:
-                temp_df = data[(data == pitcher) & (data == year)][pitch_attr]
-                pitch_type_counter = self.num_pitch_types(self.df[self.df.pitch_type.notnull()])
-                num_pitch_type = pitch_type_counter[pitcher]
+        max_counter = 0
+        
+        for play in data.pitcher.unique():
+            max_counter += data[data.pitcher==play].game_year.nunique()
+        
+        print('Starting pitch_clustering')
+        for pitcher in data.pitcher.unique():       
+            for year in data[data.pitcher == pitcher].game_year.unique():
+                temp_df = data[(data.pitcher == pitcher) & 
+                               (data.game_year == year)][pitch_attr]
+                
+                num_pitch_type = int(self.df[(self.df.pitcher == pitcher) & 
+                                         (self.df.game_year == year)].pitch_type.nunique())
                 
                 score_max, n_clus, n_init = self.cluster_k_def(mini, maxi, temp_df, num_pitch_type)
                 
                 km = KMeans(n_clusters=n_clus,n_init=n_init,random_state=42)
                 km.fit_predict(temp_df)
-                
-                for centroid in km.cluster_centers_:
-                    to_append = [pitcher, year] + list(centroid)
                     
-                    pitch_df.loc[len(pitch_df)] = to_append
+                with open('data/pitcher_repertoire_clusters.csv', 'a', newline='') as fp:
+                    f = csv.writer(fp)
+                    
+                    for centroid in km.cluster_centers_:
+                        to_append = [pitcher, year]
+                        to_append.extend(centroid)
+                        
+                        f.writerow(to_append)
+                        
+                        pitch_df.loc[len(pitch_df)] = to_append
+                    
+                counter += 1
+                print(str(counter) + '/' + str(max_counter)) 
                    
         print('pitch clustering completed')
         return pitch_df
@@ -142,15 +185,6 @@ class Pitcher:
                 cols.remove(attr)
             
         return cols
-    
-    # returns empty database for pitcher_pitch_clusters
-    def empty_db(self, pitch_attr):
-        cols = ['pitcher','game_year']
-        
-        for attr in pitch_attr:
-            cols.extend(attr)
-        
-        return pd.DataFrame(columns=cols)
                     
     # kmeans clustering for pitches, finding best sillhouette score
     def cluster_k_def(self, mini, maxi, rep, pitch_count_num):
@@ -190,26 +224,28 @@ class Pitcher:
                 
         return n_init_val, n_init_max
     
-    # returns pitcher and years where total pitches thrown for pitcher meets limit set
-    def pitch_limiter(self, data, pitch_limit=0):
-        pitcher_list = list(data[data.pitcher.notnull()].pitcher.unique())
-        game_years = list(data[data.game_year.notnull()].game_year.unique())
-        
-        pitch_count = {}
-        for pitcher in pitcher_list:
-            for year in game_years:
-                temp_df = data[(data.pitcher == pitcher) & (data.game_year == year)]
-                count = int(len(temp_df.index))
-            
-                if count >= pitch_limit:
-                    if pitcher in pitch_count.keys():
-                        pitch_count[pitcher] += [year]
-                    elif pitcher not in pitch_count.keys():
-                        pitch_count[pitcher] = [year]
-                    else:
-                        print('what?')
-            
-        return pitch_count
+# =============================================================================
+#     # returns pitcher and years where total pitches thrown for pitcher meets limit set
+#     def pitch_limiter(self, data, pitch_limit=0):
+#         pitcher_list = list(data[data.pitcher.notnull()].pitcher.unique())
+#         game_years = list(data[data.game_year.notnull()].game_year.unique())
+#         
+#         pitch_count = {}
+#         for pitcher in pitcher_list:
+#             for year in game_years:
+#                 temp_df = data[(data.pitcher == pitcher) & (data.game_year == year)]
+#                 count = int(len(temp_df.index))
+#             
+#                 if count >= pitch_limit:
+#                     if pitcher in pitch_count.keys():
+#                         pitch_count[pitcher] += [year]
+#                     elif pitcher not in pitch_count.keys():
+#                         pitch_count[pitcher] = [year]
+#                     else:
+#                         print('what?')
+#             
+#         return pitch_count
+# =============================================================================
     
     # returns number of reported pitch_types
     def num_pitch_types(self, df):
