@@ -19,54 +19,81 @@ class GamePrep:
                      'sac_fly_double_play','triple_play','sac_bunt_double_play',
                      'strikeout','strikeout_double_play','field_error']
     
-    # splits up data based on batter
-    def train_test_batters(self, file_name_train, file_name_test, test_split=0.20):
-        full_list = []
+    def train_test_by_year(self, file_name_train, file_name_test, year_sens=500):
+        temp_df = self.data[self.data.game_year.notna()]
+        recent_year_list = list(temp_df['game_year'].unique())
+        print(recent_year_list)
+        recent_year = recent_year_list[-1]
+        print(recent_year)
+        found = False
         
-        for batter in self.data.batter.unique():
-            for year in self.data[self.data.batter == batter].game_year.unique():
-                full_list.append([batter,year])
-                
-        test_batter_num = round(len(full_list)*test_split)
-        
-        test_set_batters = sample(full_list, test_batter_num)
-        for element in test_set_batters:
-            full_list.remove(element)
-        
-        train_set = self.return_df(full_list, pitcher=False)
-        test_set = self.return_df(test_set_batters, pitcher=False)
-        
-        train_set.to_csv(file_name_train)
-        test_set.to_csv(file_name_test)
-        
-        return train_set, test_set
-    
-    # splits up data based on pitcher
-    def train_test_pitchers(self, file_name_train, file_name_test, test_split=0.20):
-        full_list = []
-        
-        for pitcher in self.data.pitcher.unique():
-            for year in self.data[self.data.pitcher == pitcher].game_year.unique():
-                full_list.append([pitcher,year])
-                
-        test_pitcher_num = round(len(full_list)*test_split)
-        
-        test_set_pitchers = sample(full_list, test_pitcher_num)
-        for element in test_set_pitchers:
-            full_list.remove(element)
-            
-        print("Train: " + str(len(full_list)))
-        print("Test: " + str(len(test_set_pitchers)))
-        
-        train_set = self.return_df(full_list)
-        print('Done with training set')
-        test_set = self.return_df(test_set_pitchers)
-        print('Done with testing set')
+        while not found:
+            print(recent_year)
+            if self.data[self.data.game_year == recent_year]['game_pk'].count() >= year_sens:
+                found = True
+            else:
+                recent_year -= 1
+          
+        print(recent_year)
+        train_set = self.data[self.data.game_year < recent_year]
+        test_set = self.data[self.data.game_year == recent_year]
         
         train_set.to_csv(file_name_train)
         test_set.to_csv(file_name_test)
         
         return train_set, test_set
+        
+    # deprecated train test split due to it being less accurate and discouraged
+# =============================================================================
+#     # splits up data based on batter
+#     def train_test_batters(self, file_name_train, file_name_test, test_split=0.20):
+#         full_list = []
+#         
+#         for batter in self.data.batter.unique():
+#             for year in self.data[self.data.batter == batter].game_year.unique():
+#                 full_list.append([batter,year])
+#                 
+#         test_batter_num = round(len(full_list)*test_split)
+#         
+#         test_set_batters = sample(full_list, test_batter_num)
+#         for element in test_set_batters:
+#             full_list.remove(element)
+#         
+#         train_set = self.return_df(full_list, pitcher=False)
+#         test_set = self.return_df(test_set_batters, pitcher=False)
+#         
+#         train_set.to_csv(file_name_train)
+#         test_set.to_csv(file_name_test)
+#         
+#         return train_set, test_set
+#     
+#     # splits up data based on pitcher
+#     def train_test_pitchers(self, file_name_train, file_name_test, test_split=0.20):
+#         full_list = []
+#         
+#         for pitcher in self.data.pitcher.unique():
+#             for year in self.data[self.data.pitcher == pitcher].game_year.unique():
+#                 full_list.append([pitcher,year])
+#                 
+#         test_pitcher_num = round(len(full_list)*test_split)
+#         
+#         test_set_pitchers = sample(full_list, test_pitcher_num)
+#         for element in test_set_pitchers:
+#             full_list.remove(element)
+#             
+#         print("Train: " + str(len(full_list)))
+#         print("Test: " + str(len(test_set_pitchers)))
+#         
+#         train_set = self.return_df(full_list)
+#         print('Done with training set')
+#         test_set = self.return_df(test_set_pitchers)
+#         print('Done with testing set')
+#         
+#         train_set.to_csv(file_name_train)
+#         test_set.to_csv(file_name_test)
+#         
+#         return train_set, test_set
+# =============================================================================
         
     def pitch_limiter(self, data=None, pitch_limit=100):
         if data is not None:
