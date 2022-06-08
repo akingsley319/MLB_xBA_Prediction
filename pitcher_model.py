@@ -15,7 +15,7 @@ from sklearn.metrics import silhouette_score
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from pickle import dump
+from pickle import dump, load
 
 from fcmeans import FCM
 
@@ -36,6 +36,19 @@ class Pitcher:
         self.pitcher_features = ['pitcher','game_year','pitch_type','pitch_name']
         self.df = data[self.pitcher_stats]
     
+    # apply models; standardization, dimensionality reduction, fuzzy clustering
+    def apply_cluster_modeling(self, data):
+        if data is not None:
+            data = data.copy()
+        else:
+            data = self.df.copy()
+            
+        data = self.apply_standardization(data)
+        data, cols = self.apply_dimensionality_reduction(data)
+        data, clus_cols = self.apply_fuzzy_cluster(data, cols)
+        
+        return data
+    
     # standardize data, pca dimensionality reduction, kmeans clustering of 
     # individual pitcher repertoires, fuzzy c clustering of ideal pitches
     def full_package(self, covar_goal=0.95, mini=-1, maxi=3, pitch_limiter=100):
@@ -50,15 +63,9 @@ class Pitcher:
         
         data = self.pitcher_pitch_cluster(data, mini, maxi)
         
-        score_max, n_clus = self.fuzzy_clustering(data)
+        score_max, n_clus, _ = self.fuzzy_clustering(data)
         
         return data, score_max, n_clus
-    
-    # Remove null values
-    def remove_nulls(self, data):
-        for column in data.columns:
-            data.drop(data[data[column].isna()].index, inplace=True)
-        return data.reindex()
     
     # Fuzzy Clustering of ideal pitch data for pitchers
     # Uses best silhouette score for k-means to determine number of clusters
@@ -97,7 +104,8 @@ class Pitcher:
         
         return data
     
-    # Dimensionality Reduction; done together to keep consistent measurements
+    # Dimensionality Reduction; done together to keep consistent measurements;
+    # keeps 95%+ variance by default
     def dimensionality_reduction(self, data, orig_data, covar_goal):
         temp_data = data[self.pitch_features]
         
@@ -175,6 +183,49 @@ class Pitcher:
                    
         print('pitch clustering completed')
         return pitch_df
+    
+    # apply standardization; transforms the input dataset
+    def apply_standardization(self, data):
+        pickled_model = load(open('models/standardize_pitching_data.pkl', 'rb'))
+        data[self.pitch_features] = pickled_model.transform(data[self.pitch_features])
+        return data
+    
+    # apply dimensionality reduction and create new columns in data set for the output columns
+    def apply_dimensionality_reduction(self, data):
+        pickled_model = load(open('models/pca_pitches.pkl', 'rb'))
+        
+        cols = []
+        for i in range(0,pickled_model.n_components_):
+            cols.append('attribute_' + str(i))
+            
+        mask = data[self.pitch_features].notnull()
+        print(data[data[mask][self.pitch_features].isna()])
+        data[mask][cols] =  pickled_model.transform(data[mask][self.pitch_features])
+    
+        return data, cols
+        
+    # apply fuzzy clustering with defined columns (designed with dimensionality reduction in mind)
+    def apply_fuzzy_cluster(self, data, cols):
+        pickled_model = load(open('models/fuzzy_clustering_pitching_data.pkl', 'rb'))
+        
+        print(pickled_model.centers)
+        
+        cols_fc = []
+        for i in range(0, len(pickled_model.centers)):
+            cols_fc.append('cluster_attribute_' + str(i))
+        
+        print(cols)
+        print(cols_fc)
+        
+        data[cols_fc] = pickled_model.soft_predict(data[cols].to_numpy())
+        
+        return data, cols_fc
+    
+    # Remove null values
+    def remove_nulls(self, data):
+        for column in data.columns:
+            data.drop(data[data[column].isna()].index, inplace=True)
+        return data.reindex()
     
     # returns relevant columns for clustering
     def count_columns(self, data):
