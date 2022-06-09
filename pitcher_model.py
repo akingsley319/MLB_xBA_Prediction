@@ -42,7 +42,9 @@ class Pitcher:
             data = data.copy()
         else:
             data = self.df.copy()
-            
+        
+        data = self.remove_nulls(data)
+        
         data = self.apply_standardization(data)
         data, cols = self.apply_dimensionality_reduction(data)
         data, clus_cols = self.apply_fuzzy_cluster(data, cols)
@@ -198,32 +200,28 @@ class Pitcher:
         for i in range(0,pickled_model.n_components_):
             cols.append('attribute_' + str(i))
             
-        mask = data[self.pitch_features].notnull()
-        print(data[data[mask][self.pitch_features].isna()])
-        data[mask][cols] =  pickled_model.transform(data[mask][self.pitch_features])
-    
+        data[cols] =  pickled_model.transform(data[self.pitch_features])
+        
         return data, cols
         
     # apply fuzzy clustering with defined columns (designed with dimensionality reduction in mind)
     def apply_fuzzy_cluster(self, data, cols):
         pickled_model = load(open('models/fuzzy_clustering_pitching_data.pkl', 'rb'))
         
-        print(pickled_model.centers)
-        
         cols_fc = []
         for i in range(0, len(pickled_model.centers)):
             cols_fc.append('cluster_attribute_' + str(i))
-        
-        print(cols)
-        print(cols_fc)
         
         data[cols_fc] = pickled_model.soft_predict(data[cols].to_numpy())
         
         return data, cols_fc
     
     # Remove null values
-    def remove_nulls(self, data):
-        for column in data.columns:
+    def remove_nulls(self, data, columns=None):
+        if columns == None:
+            columns = data.columns
+            
+        for column in columns:
             data.drop(data[data[column].isna()].index, inplace=True)
         return data.reindex()
     
