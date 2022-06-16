@@ -28,6 +28,7 @@ class Cleaner:
             self.orig_data = orig_data
     
     def clean_data(self):
+        self.remove_empty()
         self.clean_header()
         self.fill_events()
         self.des_info()
@@ -37,10 +38,16 @@ class Cleaner:
         self.simplify_events()
         self.base_runner_class()
     
-    def clean_new(self):
-        self.clean_data()
+    def clean_data_more(self):
         self.game_type()
         self.remove_from_events()
+        self.pitch_spin_euc()
+        self.pitch_fill()
+        self.xba_k()
+        
+    def clean_new(self):
+        self.clean_data()
+        self.clean_data_more()
         
     def pitch_prep(self):
         self.clean_new()
@@ -64,6 +71,37 @@ class Cleaner:
     # spin_axis
     # bat_event ?
     # events (single, double, double_play, triple, triple_play)
+    
+    def remove_empty(self):
+        self.data = self.data[self.data.game_date.notnull()].copy()
+
+    
+    # fill pitch metric data
+    # currently fills backward based on pitcher, which is how atbats are in data; 
+    # hope to replace with better method later
+    def pitch_fill(self):
+        cols = ['release_speed','release_pos_x','release_pos_z',
+                 'pfx_x','pfx_z','plate_x','plate_z','vx0','vy0','vz0','ax',
+                 'ay','az', 'effective_speed','release_spin_rate', 
+                 'release_extension','release_pos_y','spin_x', 'spin_z']
+        
+        df = self.data.copy()
+        
+        # takes rows with nan in 'cols' and replaces all pitching metrics with None
+        self.zero_rows(df,cols)
+        df.reindex()
+         
+        df[cols] = df.groupby(['pitcher'])[cols].fillna(method='bfill')
+        df[cols] = df.groupby(['pitcher'])[cols].fillna(method='ffill')
+        
+        self.data = df
+        
+    def zero_rows(self, data, cols):
+        mask = data[cols].isna().any(axis=1)
+        print(len(data.loc[mask,cols].index))
+        data.loc[mask, cols] = None
+        
+        return data
     
     # apply pitcher clustering to data
     def pitch_data_clean(self):
@@ -352,6 +390,7 @@ class Cleaner:
         self.data['on_1b'] = self.data['on_1b'].apply(lambda x: 1 if x!=0 else x)
         self.data['on_2b'] = self.data['on_2b'].apply(lambda x: 1 if x!=0 else x)
         self.data['on_3b'] = self.data['on_3b'].apply(lambda x: 1 if x!=0 else x)
+        print('base_runner_class')
     
     # Drop unneeded, uninterested, and deprecated columns
     def remove_cols(self):
@@ -420,3 +459,7 @@ class Cleaner:
             return 'error'
         else:
             return None
+        
+    def xba_k(self):
+        mask = self.data['events'].isin(['strikeout','strikeout_double_play'])
+        self.data.loc[mask,'estimated_ba_using_speedangle'] = 0

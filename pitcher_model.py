@@ -43,8 +43,6 @@ class Pitcher:
         else:
             data = self.df.copy()
         
-        data = self.remove_nulls(data)
-        
         data = self.apply_standardization(data)
         data, cols = self.apply_dimensionality_reduction(data)
         data, clus_cols = self.apply_fuzzy_cluster(data, cols)
