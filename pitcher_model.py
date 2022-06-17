@@ -37,6 +37,8 @@ class Pitcher:
         self.df = data[self.pitcher_stats]
     
     # apply models; standardization, dimensionality reduction, fuzzy clustering
+    # This should be applied prior to game file concentration due to need for 
+    # all pitch metrics
     def apply_cluster_modeling(self, data):
         if data is not None:
             data = data.copy()
