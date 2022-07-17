@@ -28,4 +28,3 @@ test_set_batters = test[['game_date','batter','estimated_ba_using_speedangle']]
 
 
 
-
