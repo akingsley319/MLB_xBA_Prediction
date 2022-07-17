@@ -40,6 +40,7 @@ class GamePrep:
             counter += 1
             print(str(counter) + "/" + str(max_counter))
         df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
+        df_out['pa'] = df_out['events'].apply(lambda x: len(x))
         return df_out
     
     # Consolidates all atbats for a single game
@@ -194,7 +195,7 @@ class GamePrep:
     
     # returns list of all games in data
     def separate_games(self):
-        games = [self.data[self.data.game_pk == id].copy() for id in self.data.game_pk.unique()]
+        games = [self.data[self.data.game_date == date].copy() for date in self.data.game_date.unique()]
         print("games separated")
         return games
     
