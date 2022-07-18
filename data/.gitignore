@@ -1,3 +1,4 @@
 "*.pyc" 
 *.csv
 game_files.csv
+batter_recent_performance.pkl
