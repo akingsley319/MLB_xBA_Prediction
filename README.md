@@ -10,7 +10,11 @@ The final project will involve predictions based on the recent performance of ba
 
 The file "create_game_files.py" will retrieve the designated game files from the BaseballSavant API and download it all as a csv file. It will also sift through player ids and create a map of player names and player ids by scraping from each player's official MLB page.
 
-The file "pitcher_cluster_run.py" will cluster pitcher pitches, providing a framework for matchup potential. This process will also clean the game files. Analysis of this process can be found in "cluster_analysis.ipynb". 
+The file "pitcher_cluster_run.py" will cluster pitcher pitches, providing a framework for matchup potential. This process will also clean the game files. Analysis of this process can be found in "cluster_analysis.ipynb".
+
+"forecasting.py" prepares files (currently only batter) for modeling use.
+
+"batter_performance_modeling.py" models and properly formats data for recent performance prediction.
 
 ## To Do List
 
@@ -24,6 +28,7 @@ This is the to-do list which should be completed by August 21st, 2022 for submis
 * Properly set at bat representative pitch to last pitch thrown
 * Perform modeling of matchup result modeling
 * Combination of created models
+* Condense files that need to be run for less file clutter and better optimized use
 
 ## Resources
 
