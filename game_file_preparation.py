@@ -9,6 +9,161 @@ import pandas as pd
 
 from random import sample
 
+class PitcherPrep:
+    def __init__(self):
+        pass
+
+class BatterPrep:
+    def __init__(self, target='estimated_ba_using_speedangle'):
+        self.target = target
+    
+    def data_prep(self, data, depth=15):
+        data = data[['estimated_ba_using_speedangle','bb','k','pa','batter','game_date']].copy()
+        data.fillna(0, inplace=True)
+        
+        self.play(data)
+        data = self.game_date_to_index(data)
+        self.fill_dates(data)
+        self.date_info(data)
+        self.type_set(data)
+        self.shift_target(data)
+        self.per_pa(data)
+        data = self.depth_features(data,depth)
+        
+        return data
+    
+    def data_clean(self,data):
+        self.remove_cols(data)
+        data = self.remove_rows(data)
+        
+        return data
+    
+    # Correctly set dtype
+    def type_set(self, data):
+        data[self.target] = data[self.target].astype('float')
+        data.loc[:,~data.columns.isin([self.target])] = data.loc[:,~data.columns.isin([self.target])].astype('int')
+    
+    # Introduce play column to model
+    # States whether or not a batter played that day
+    def play(self, data):
+        data['play'] = data['pa'].apply(lambda x: 1 if x>0 else 0)
+        
+    # Move game date to index
+    def game_date_to_index(self, data):
+        data = data.sort_values('game_date')
+        data['game_date'] = pd.to_datetime(data['game_date'])
+        data.set_index('game_date',inplace=True,drop=True)
+        return data
+        
+    # Fills missing days between batter's first and last appearance
+    def fill_dates(self, data):
+        pd_out = pd.DataFrame()
+        
+        for batter in data.batter.unique():
+            temp_df = data[data.batter == batter]
+            pd_out = pd_out.append(temp_df.asfreq('D'))
+            pd_out['batter'].fillna(batter, inplace=True)
+            
+        data = pd_out
+        data.fillna(0, inplace=True)
+    
+    # Introduces seasonality components
+    def date_info(self,data):
+        day_of_week_idx = {'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6}
+        
+        data['day_of_week'] = data.index.day_name()
+        data['day_of_week'] = data.day_of_week.replace(day_of_week_idx)
+        
+        data['month'] = data.index.month
+        data['year'] = data.index.year    
+    
+    # Shifts variables that will be available prior, and the target variable
+    def shift_target(self,data):
+        data[['next_estimated_ba_using_speedangle','next_play','day_of_week','month','year']] = data.groupby('batter')[['estimated_ba_using_speedangle','play','day_of_week','month','year']].shift(-1)
+        data.dropna(inplace=True)
+        
+    # Converts columns to per plate appearance
+    def per_pa(self,data):
+        mask = (data.pa != 0)
+        data.loc[mask,'k_per_pa'] = data.loc[mask,'k'] / data.loc[mask,'pa']
+        data.loc[mask,'bb_per_pa'] = data.loc[mask,'bb'] / data.loc[mask,'pa']
+        
+        data[['k_per_pa','bb_per_pa']] = data[['k_per_pa','bb_per_pa']].fillna(0)
+        
+    # rolling mean by date
+    def rolling_data(self,data,roll_amount,target):
+        mean_name = target + '_mean_' + str(roll_amount)
+        
+        temp_df = data.groupby('batter')[[target,'play']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df.columns = ['batter', target, 'play']
+        
+        mask = (temp_df.play != 0)
+        temp_df.loc[mask,mean_name] = temp_df.loc[mask,target] / temp_df.loc[mask,'play']
+        
+        temp_df.drop([target,'play'],axis = 1,inplace=True)
+        
+        return data.merge(temp_df, on=['game_date','batter'])
+        
+    # rolling mean weighted by plate appearances
+    def rolling_weighted_data(self,data,roll_amount,target):
+        data['weighted_pa'] = data.pa - data.bb
+        data['weighted_target'] = data[target] * data.weighted_pa
+        
+        name = target + '_mean_weighted_' + str(roll_amount)
+        
+        temp_df = data.groupby('batter')[['weighted_target','weighted_pa']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        
+        mask = (temp_df.weighted_pa != 0)
+        temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / temp_df.loc[mask,'weighted_pa']
+        
+        temp_df.drop(['weighted_target','weighted_pa'],axis = 1,inplace=True)
+        data.drop(['weighted_target','weighted_pa'],axis=1,inplace=True)
+        
+        return data.merge(temp_df, on=['game_date','batter'], how='inner')
+    
+    # introduces log of previous xBA
+    def lag_features(self,data,n):
+        cols = ['bb_per_pa','k_per_pa','play','estimated_ba_using_speedangle']
+        
+        for col in cols:
+            for i in range(n):
+                name = col + '_' + str(i+1)
+                
+                if i > 0:
+                    prev_name = col + '_' + str(i)
+                    data[name] = data.groupby('batter')[prev_name].shift(1)
+                else:
+                    data[name] = data.groupby('batter')[col].shift(1)
+                    
+        return data
+    
+    # combines rolling and lag methods
+    def depth_features(self,data,depth,roll_vars=['estimated_ba_using_speedangle','k_per_pa','bb_per_pa']):
+        temp_df = data.copy()
+        for item in roll_vars:
+            for i in range(1,depth+1):
+                if i % 5 == 0:
+                    temp_df = self.rolling_data(temp_df,i,item)
+                    temp_df = self.rolling_weighted_data(temp_df,i,item)
+        temp_df = self.lag_features(temp_df,depth)
+        
+        return temp_df
+    
+    # removes columns determined not significant
+    def remove_cols(self,data):
+        for col in data.columns:
+            if ('days_off' in col) or ('play' in col):
+                if col != 'next_play':
+                    data.drop(col,axis=1,inplace=True)
+                    
+    # Removes empty and null rows
+    def remove_rows(self,data):
+        data.dropna(axis=0,inplace=True)
+        
+        mask = (data.next_play != 0)
+        
+        return data.loc[mask,:]
+    
 
 class GamePrep:
     def __init__(self, data, game_condensed_list=None, weight=1000.0):
