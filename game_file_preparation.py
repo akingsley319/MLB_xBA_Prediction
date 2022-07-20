@@ -6,6 +6,7 @@ Created on Wed Jun 15 13:24:14 2022
 """
 
 import pandas as pd
+import numpy as np
 
 from random import sample
 
@@ -181,8 +182,33 @@ class GamePrep:
         else:
             self.game_condensed_list = self.consolidated_game_files(self.data, self.weight)
     
+    # add hard cluster component and max and min for each component to pitches
+    def atbat_cluster(self, data):
+        attr_cols = []
+        
+        for col in data:
+            if 'cluster_attribute' in col:
+                attr_cols.append(col)
+        cluster_col = ['cluster_' + str(i) for i in range(len(attr_cols))]
+        
+        data[cluster_col] = data[attr_cols].apply(lambda x: x == x.max(), axis=1).astype(int) 
+        
+        return data
+    
     def return_pitchers(self):
-        pass
+        df_out = pd.DataFrame()
+        counter = 0
+        max_counter = len(self.game_condensed_list)
+        for game in self.game_condensed_list:
+            game_df = self.atbat_cluster(game)
+            game_df = self.consolidate_games(game_df,'pitcher')
+            df_out = df_out.append(game_df)
+            
+            counter += 1
+            print(str(counter) + "/" + str(max_counter))
+        df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
+        df_out['pa'] = df_out['events'].apply(lambda x: len(x))
+        return df_out
     
     def return_batters(self):
         df_out = pd.DataFrame()
@@ -195,7 +221,7 @@ class GamePrep:
             counter += 1
             print(str(counter) + "/" + str(max_counter))
         df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
-        df_out['pa'] = df_out['events'].apply(lambda x: len(x))
+        df_out['pa'] = df_out['events'].apply(lambda x: len([event for event in x.events if event != 'walk'))
         return df_out
     
     # Consolidates all atbats for a single game
@@ -204,13 +230,13 @@ class GamePrep:
         
         if player_type == 'batter':
             player_list = game.batter.unique()
-        elif player_type == 'player':
+        elif player_type == 'pitcher':
             player_list = game.pitcher.unique()
         
         for player in player_list:
             if player_type == 'batter':
                 game_temp = game[game.batter == player]
-            elif player_type == 'player':
+            elif player_type == 'pitcher':
                 game_temp = game[game.pitcher == player]
             
             #print(game_temp.head(20))
@@ -222,6 +248,10 @@ class GamePrep:
                 if 'attribute' in col:
                     mean_val = game_temp[col].mean()
                     values[col] = mean_val
+                    
+                    if 'cluster' in col:
+                        values[col + '_max'] = game_temp[col].max()
+                        values[col + '_min'] = game_temp[col].min()
                     
                 elif col == 'estimated_ba_using_speedangle':
                     mean_val = game_temp[col].mean()
@@ -245,11 +275,14 @@ class GamePrep:
                     else:
                         values['k'] += 0
                     
-                    values[col] = game_temp.events.unique()
+                    values[col] = game_temp.events.tolist()
                     
                 elif col == 'pitch_count':
                     total = game_temp[col].sum()
                     values[col] = total
+                    
+                elif 'cluster' in col:
+                    values[col] = game_temp[col].sum()
                     
                 else:
                     val_temp = game_temp[col].unique()[0]
@@ -294,27 +327,28 @@ class GamePrep:
     # takes separated atbat (separate_atbat) and consolidates atbat
     def consolidate_atbat(self, data, weight):
         values = {}
-        attr_col = []
-        attr_val = 0
+#        attr_col = []
+#        attr_val = 0
         
         pitch_count = int(data['attribute_1'].count())
         
         for col in data.columns:
             
             if 'attribute' in col:
-                attr_col.append(col)
-                
-                attr_sum = []
-                for i in range(0,pitch_count):
-                    if i == pitch_count - 1:
-                        attr_sum.append(weight)
-                    else:
-                        attr_sum.append(1)
-                        
-                weighted_sum =  (data.loc[:,col] * list(attr_sum)).sum()
-                
-                attr_val += weighted_sum
-                values[col] = weighted_sum
+                values[col] = data[col].iat[-1]
+#                attr_col.append(col)
+#                
+#                attr_sum = []
+#                for i in range(0,pitch_count):
+#                    if i == pitch_count - 1:
+#                        attr_sum.append(weight)
+#                    else:
+#                        attr_sum.append(1)
+#                        
+#                weighted_sum =  (data.loc[:,col] * list(attr_sum)).sum()
+#                
+#                attr_val += weighted_sum
+#                values[col] = weighted_sum
                 
             elif col == 'estimated_ba_using_speedangle':
                 val = data.estimated_ba_using_speedangle[data.events.first_valid_index()]
@@ -329,8 +363,8 @@ class GamePrep:
                 
                 values[col] = val
         
-        for col in attr_col:
-            values[col] = values[col] / attr_val
+#        for col in attr_col:
+#            values[col] = values[col] / attr_val
             
         values['pitch_count'] = pitch_count
         
