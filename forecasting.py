@@ -11,7 +11,6 @@ import game_file_preparation as gfp
 train = pd.read_csv('data/train/train_data_fix.csv')
 test = pd.read_csv('data/test/test_data_fix.csv')
 
-import game_file_preparation as gfp
 
 # Train Batter Dataset
 train_prep = gfp.GamePrep(train)
@@ -27,4 +26,18 @@ train_set_batters = train[['game_date','batter','estimated_ba_using_speedangle']
 test_set_batters = test[['game_date','batter','estimated_ba_using_speedangle']]
 
 
+# Train Pitcher Dataset
+train_prep = gfp.GamePrep(train)
+train_pitchers = train_prep.return_pitchers()
+train_pitchers.to_csv('data/train/pitchers_condensed_train.csv')
 
+# Test Pitcher Dataset
+test_prep = gfp.GamePrep(test)
+test_pitchers = test_prep.return_pitchers()
+test_pitchers.to_csv('data/test/pitchers_condensed_test.csv')
+
+
+# Train Combined Datset
+
+
+# Test Combined Datset

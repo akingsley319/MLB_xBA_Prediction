@@ -36,3 +36,11 @@ batter_model.save_model()
 train.to_csv('data/train/batters_performance_train.csv')
 test.to_csv('data/test/batters_performance_test.csv')
 
+
+
+# =============================================================================
+# from sklearn.metrics import mean_squared_error, mean_absolute_error
+# 
+# print('mse: ' + str(mean_squared_error(y_test,batter_model.predict(x_test))))
+# print('mae: ' + str(mean_absolute_error(y_test,batter_model.predict(x_test))))
+# =============================================================================

@@ -14,9 +14,9 @@ from sklearn.model_selection import RandomizedSearchCV
 
 class Batter:
     def __init__(self):
-        #with open(r"models/batter_recent_performance.pkl", "rb") as input_file:
-        #    self.model = pkl.load(input_file)
-        self.model = None
+        with open(r"models/batter_recent_performance.pkl", "rb") as input_file:
+            self.model = pkl.load(input_file)
+        #self.model = None
        
     # predicts using saved model
     def predict(self,data):
