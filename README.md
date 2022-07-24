@@ -26,7 +26,7 @@ The file "pitcher_cluster_run.py" will cluster pitcher pitches, providing a fram
 
 This is the to-do list which should be completed by August 21st, 2022 for submission for my Master's Program for Data Science through Regis University.
 
-* Provide feature engineering to clusters for matchup purposes and respresentation of pitcher repertoire
+* Provide feature engineering to clusters for matchup purposes and respresentation of pitcher repertoire 
 * Perform modeling of matchup result modeling
 * Combination of created models
 * Condense files that need to be run for less file clutter and better optimized use
