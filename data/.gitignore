@@ -2,3 +2,4 @@
 *.csv
 game_files.csv
 batter_recent_performance.pkl
+pitcher_recent_performance.pkl

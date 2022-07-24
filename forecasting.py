@@ -38,6 +38,11 @@ test_pitchers.to_csv('data/test/pitchers_condensed_test.csv')
 
 
 # Train Combined Datset
-
+train_prep = gfp.GamePrep(train)
+train_matchups = train_prep.return_matchups()
+train_matchups.to_csv('data/train/matchups_condensed_train.csv')
 
 # Test Combined Datset
+test_prep = gfp.GamePrep(test)
+test_matchups = test_prep.return_matchups()
+test_matchups.to_csv('data/test/matchups_condensed_test.csv')
