@@ -1,0 +1,8 @@
+"*.pyc" 
+*.csv
+game_files.csv
+batter_recent_performance.pkl
+pitcher_recent_performance.pkl
+.ipynb_checkpoints/
+catboost_info/
+__pycache__/
