@@ -7,7 +7,7 @@ Created on Mon Jul 18 12:38:23 2022
 
 import pandas as pd
 
-from game_file_preparation import BatterPrep, PitcherPrep
+from game_file_preparation import BatterPrep
 from batter_model import Batter
 
 train_set = pd.read_csv('data/train/batters_condensed_train.csv')
@@ -21,10 +21,10 @@ train = batter_prep.data_clean(train)
 test = batter_prep.data_prep(test_set)
 test = batter_prep.data_clean(test)
 
-x_train = train.loc[:,~train.columns.isin(['next_estimated_ba_using_speedangle'])]
+x_train = train.loc[:,~train.columns.isin(['next_estimated_ba_using_speedangle','batter'])]
 y_train = train.loc[:,train.columns.isin(['next_estimated_ba_using_speedangle'])]
 
-x_test = test.loc[:,~test.columns.isin(['next_estimated_ba_using_speedangle'])]
+x_test = test.loc[:,~test.columns.isin(['next_estimated_ba_using_speedangle','batter'])]
 y_test = test.loc[:,test.columns.isin(['next_estimated_ba_using_speedangle'])]
 
 batter_model = Batter()
@@ -39,8 +39,10 @@ test.to_csv('data/test/batters_performance_test.csv')
 
 
 # =============================================================================
+# 
 # from sklearn.metrics import mean_squared_error, mean_absolute_error
 # 
 # print('mse: ' + str(mean_squared_error(y_test,batter_model.predict(x_test))))
 # print('mae: ' + str(mean_absolute_error(y_test,batter_model.predict(x_test))))
 # =============================================================================
+

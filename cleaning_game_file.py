@@ -11,6 +11,14 @@ import get_data as ga
 import csv
 import pickle
 
+def clean_data(df=None):
+    if df == None:
+        data = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
+    temp_class = cgf.Cleaner(df)
+    temp_class.clean_data()
+    temp_class.clean_data_more()
+    return temp_class.data
+
 class Cleaner:
     def __init__(self, data, orig_data=None, ):
         self.data = data
