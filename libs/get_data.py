@@ -144,7 +144,7 @@ def player_map(player_ids):
 
 # Grabs all game data from 2017 through 2021 season for all teams
 def game_file_creation(start_year=2017, end_year=2022):
-    ga.game_files(seasons=(start_year,end_year))
+    game_files(seasons=(start_year,end_year))
  
 # Maps player ids and player names
 def player_map(df=None):
@@ -158,7 +158,7 @@ def player_map(df=None):
         if player not in full_list:
             full_list.append(player)
     
-    player_mapping = ga.player_map(full_list)
+    player_mapping = player_map(full_list)
     
     with open('data/player_map.csv', 'w') as f:
         for key in player_mapping.keys():

@@ -12,11 +12,14 @@ import csv
 import pickle
 
 def clean_data(df=None):
-    if df == None:
+    if df is not None:
+        data = df
+    else:
         data = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
-    temp_class = cgf.Cleaner(df)
+    temp_class = Cleaner(df)
     temp_class.clean_data()
     temp_class.clean_data_more()
+    temp_class.fill_data()
     return temp_class.data
 
 class Cleaner:
@@ -28,7 +31,20 @@ class Cleaner:
                 'of_fielding_alignment','delta_home_win_exp','delta_run_exp',
                 'post_fld_score','hit_distance_sc', 'sv_id','launch_angle',
                 'launch_speed','launch_speed_angle','woba_value','woba_denom',
-                'estimated_woba_using_speedangle','iso_value']
+                'estimated_woba_using_speedangle','iso_value','on_3b','on_2b',
+                'on_1b','outs_when_up','fielder_2','fielder_3','fielder_4',
+                'fielder_5','fielder_6','fielder_7','fielder_8','fielder_9',
+                'at_bat_number','home_score','away_score','bat_score',
+                'fld_score','zone','inning','pitch_name',
+                'babip_value','player_name']
+        self.keep = ['pitch_type','game_date','release_speed','release_pos_x',
+                     'release_pos_z','batter','pitcher','events',
+                     'description','game_type','stand','p_throws','home_team',
+                     'away_team','type','balls','strikes','game_year','pfx_x',
+                     'pfx_z','plate_x','plate_z','vx0','vy0','vz0','ax','ay',
+                     'az','effective_speed','release_spin_rate','bb_type',
+                     'release_extension','game_pk','release_pos_y',
+                     'estimated_ba_using_speedangle','pitch_number','spin_axis']
         self.del_maybe = ['batter','pitcher']
         if orig_data == None:
             self.orig_data = self.data.copy()
@@ -40,11 +56,11 @@ class Cleaner:
         self.clean_header()
         self.fill_events()
         self.des_info()
-        self.pitcher_name()
+        #self.pitcher_name()
         self.handle_game_date()
         self.remove_cols()
         self.simplify_events()
-        self.base_runner_class()
+        #self.base_runner_class()
     
     def clean_data_more(self):
         self.game_type()
@@ -64,9 +80,9 @@ class Cleaner:
         
     def fill_data(self):
         self.fill_ebus()
-        self.fill_median()
-        self.fill_median_by_year()
-        self.fill_players()
+        #self.fill_median()
+        #self.fill_median_by_year()
+        #self.fill_players()
         
     # Batter name fix
     # Pitch (type, release_speed, release_pos_x, release_pos_z)
@@ -402,8 +418,9 @@ class Cleaner:
     
     # Drop unneeded, uninterested, and deprecated columns
     def remove_cols(self):
-        for item in self.del_col_list:
-            self.data.drop(item, inplace=True, axis=1)
+        self.data = self.data[self.keep]
+        #for item in self.del_col_list:
+         #   self.data.drop(item, inplace=True, axis=1)
             
     # Drop entries with no play (i.e. game advisory)
     # 'game_advisory' tag signals a delay of game or status change, no actual play

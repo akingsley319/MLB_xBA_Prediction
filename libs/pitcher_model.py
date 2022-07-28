@@ -27,10 +27,10 @@ import pickle as pkl
 
 # Performs cleaning of dataset and returns the x and y components
 def pitcher_prep(df):
-    prep = PitcherPrep()
+    pitcher_prep = gfp.PitcherPrep()
     
-    temp_data = pitcher_prep.data_prep(train_set)
-    temp_data = pitcher_prep.data_clean(train)
+    temp_data = pitcher_prep.data_prep(df)
+    temp_data = pitcher_prep.data_clean(temp_data)
     
     X = temp_data.loc[:,~temp_data.columns.isin(['next_estimated_ba_using_speedangle','pitcher'])]
     y = temp_data.loc[:,temp_data.columns.isin(['next_estimated_ba_using_speedangle'])]
@@ -120,12 +120,12 @@ class Pitcher:
                  'pfx_x','pfx_z','plate_x','plate_z','vx0','vy0','vz0','ax',
                  'ay','az', 'effective_speed','release_spin_rate', 
                  'release_extension','release_pos_y','spin_x','spin_z',
-                 'pitcher','game_year','pitch_type','pitch_name']
+                 'pitcher','game_year','pitch_type']
         self.pitch_features = ['release_speed','release_pos_x','release_pos_z',
                  'pfx_x','pfx_z','plate_x','plate_z','vx0','vy0','vz0','ax',
                  'ay','az', 'effective_speed','release_spin_rate', 
                  'release_extension','release_pos_y','spin_x', 'spin_z']
-        self.pitcher_features = ['pitcher','game_year','pitch_type','pitch_name']
+        self.pitcher_features = ['pitcher','game_year','pitch_type']
         self.df = data[self.pitcher_stats]
     
     # apply models; standardization, dimensionality reduction, fuzzy clustering
@@ -136,10 +136,17 @@ class Pitcher:
             data = data.copy()
         else:
             data = self.df.copy()
-        
+            
+        data_null = data[data[self.pitch_features].isnull()]
+        for col in self.pitch_features:
+            data = data.dropna(subset=[col])
+                
         data = self.apply_standardization(data)
         data, cols = self.apply_dimensionality_reduction(data)
         data, clus_cols = self.apply_fuzzy_cluster(data, cols)
+        
+        data_null[cols.extend(clus_cols)] = None
+        data = data.append(data_null)
         
         return data
     
@@ -152,7 +159,7 @@ class Pitcher:
         data = self.dimensionality_reduction(data, data_orig, covar_goal)
         
         if pitch_limiter > 0:
-            game_prep = gfp.GamePrep(data)
+            game_prep = gfp.TrainPrep(data)
             data = game_prep.pitch_limiter(pitch_limit=pitch_limiter)
         
         data = self.pitcher_pitch_cluster(data, mini, maxi)
@@ -286,7 +293,12 @@ class Pitcher:
     
     # apply dimensionality reduction and create new columns in data set for the output columns
     def apply_dimensionality_reduction(self, data):
-        pickled_model = load(open('models/pca_pitches.pkl', 'rb'))
+        pickled_model = load(open('models/pca_pitches.pkl', 'rb')) 
+        
+        #try:
+        #    data[self.pitch_features] = data[self.pitch_features].astype('float')
+        #except:
+        #    data[self.pitch_features] = data[self.pitch_features].astype('float')
         
         cols = []
         for i in range(0,pickled_model.n_components_):

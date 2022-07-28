@@ -11,7 +11,7 @@ import numpy as np
 from random import sample
 
 def train_test_split(df,pitch_limit=100,year_sens=1000):
-    prep = TrainPrep(test_df_copy)
+    prep = TrainPrep(df)
     train_set_year, test_set_year = prep.train_test_by_year('data/train/train_data.csv', 'data/test/test_data.csv', year_sens)
     train_setting_year = prep.pitch_limiter(train_set_year.copy(), pitch_limit)
     return train_set_year, test_set_year, train_setting_year
@@ -304,7 +304,7 @@ class BatterPrep(GenericPrep):
 
 class GamePrep:
     def __init__(self, data, game_condensed_list=None, weight=1000.0):
-        self.data = data.sort_values(['game_pk','pitcher','batter'])
+        self.data = data.sort_values(['game_date','pitcher','batter'])
         self.weight = weight
         self.event_def = ['single','double','home_run','triple','field_out',
                       'grounded_into_double_play','force_out','double_play',
@@ -317,8 +317,11 @@ class GamePrep:
             self.game_condensed_list = game_condensed_list
         else:
             self.game_condensed_list = self.consolidated_game_files(self.data, self.weight)
+            
+        print(self.game_condensed_list[-1])
+        self.game_condensed_list.pop()
     
-    # add hard cluster component and max and min for each component to pitches
+    # add hard cluster component to pitches
     def atbat_cluster(self, data):
         attr_cols = []
         
@@ -342,8 +345,8 @@ class GamePrep:
             
             counter += 1
             print(str(counter) + "/" + str(max_counter))
-        df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
-        df_out['pa'] = df_out['events'].apply(lambda x: len(x))
+        df_out = df_out.loc[:, ~df_out.columns.str.contains('Unnamed')]
+        df_out['pa'] = df_out['events'].apply(lambda x: len([event for event in x if event != 'walk']))
         return df_out
     
     def return_pitchers(self):
@@ -357,8 +360,8 @@ class GamePrep:
             
             counter += 1
             print(str(counter) + "/" + str(max_counter))
-        df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
-        df_out['pa'] = df_out['events'].apply(lambda x: len(x))
+        df_out = df_out.loc[:, ~df_out.columns.str.contains('Unnamed')]
+        df_out['pa'] = df_out['events'].apply(lambda x: len([event for event in x if event != 'walk']))
         return df_out
     
     def return_batters(self):
@@ -371,21 +374,20 @@ class GamePrep:
             
             counter += 1
             print(str(counter) + "/" + str(max_counter))
-        df_out = df_out.loc[:, ~df_out.columns.str.contains('^Unnamed')]
-        df_out['pa'] = df_out['events'].apply(lambda x: len([event for event in x.events if event != 'walk']))
+        df_out = df_out.loc[:, ~df_out.columns.str.contains('Unnamed')]
+        df_out['pa'] = df_out['events'].apply(lambda x: len([event for event in x if event != 'walk']))
         return df_out
     
     # Consolidates all atbats for a single game
     def consolidate_games(self, game, player_type='batter'):
         game_db = pd.DataFrame()
-        
         if player_type == 'batter':
-            player_list = game.batter.unique()
+            player_list = game.loc[:,'batter'].unique()
         elif player_type == 'pitcher':
-            player_list = game.pitcher.unique()
+            player_list = game.loc[:,'pitcher'].unique()
         elif player_type == 'both':
-            pitcher_list = game.pitcher.unique()
-            batter_list = game.batter.unique()
+            pitcher_list = game.loc[:,'batter'].unique()
+            batter_list = game.loc[:,'pitcher'].unique()
             
             player_list = [(pitcher,batter) for pitcher in pitcher_list for batter in batter_list]
         
@@ -402,7 +404,6 @@ class GamePrep:
             if game_temp.empty:
                 continue
             
-            walks = 0
             values = {}
             
             for col in game_temp.columns:
@@ -439,7 +440,7 @@ class GamePrep:
                     else:
                         values['k'] += 0
                     
-                    values[col] = game_temp.events.tolist()
+                    values['events'] = game_temp.events.tolist()
                     
                 elif col == 'pitch_count':
                     total = game_temp[col].sum()
@@ -447,9 +448,13 @@ class GamePrep:
                     
                 elif 'cluster' in col:
                     values[col] = game_temp[col].sum()
+                    values[col + '_list'] = list(game_temp[col])
+                    
+                elif col == 'game_date':
+                    values[col] = game_temp['game_date'].mode()
                     
                 else:
-                    val_temp = game_temp[col].unique()[0]
+                    val_temp = list(game_temp[col])
                     values[col] = val_temp
                 
             game_db = game_db.append(values, ignore_index=True)
@@ -467,6 +472,7 @@ class GamePrep:
     # For binning games, this might be where to do it
     def consolidated_game_files(self, data, weight):
         games = self.separate_games()
+        
         games_out = []
         
         max_count = len(games)
@@ -476,15 +482,17 @@ class GamePrep:
             atbats_out = pd.DataFrame()
             
             for atbat in atbats:
+                atbat = atbat.loc[:,atbat.columns.notna()]
                 dict_atbats = self.consolidate_atbat(atbat,weight)
                 atbats_out = atbats_out.append(dict_atbats, ignore_index=True)
                 
             games_out.append(atbats_out)
             
             count += 1
+            print('atbats')
             print(str(count) + "/" + str(max_count))
-            if count == 20:
-                print(atbats_out['estimated_ba_using_speedangle'])
+#            if count == 20:
+#                print(atbats_out['estimated_ba_using_speedangle'])
         return games_out
         
     
@@ -516,14 +524,27 @@ class GamePrep:
                 
             elif col == 'estimated_ba_using_speedangle':
                 val = data.estimated_ba_using_speedangle[data.events.first_valid_index()]
-                values[col] = val
+                values['estimated_ba_using_speedangle'] = val
                 
             elif col == 'events':
                 val = data.events.unique()[0]
                 values[col] = data.events.unique()[0]
+                
+            elif col == 'batter':
+                values['batter'] = data.batter.unique()[0]
+                
+            elif col == 'pitcher':
+                values['pitcher'] = data.pitcher.unique()[0]
+                
+# =============================================================================
+#             elif col == 'estimated_ba_using_speedangle':
+#                 mask = data['estimated_ba_using_speedangle'].notna()
+#                 val = data.loc[mask,data.columns.isin(['estimated_ba_using_speedangle'])][::-1]
+#                 values[col] = val
+# =============================================================================
             
             else:
-                val = data[col].unique()[0]
+                val = data[col].unique()[::-1]
                 
                 values[col] = val
         
@@ -575,14 +596,17 @@ class TrainPrep:
         found = False
         
         while not found:
-            print(recent_year)
-            if self.data[self.data.game_year == recent_year]['game_pk'].count() >= year_sens:
+            #print(recent_year)
+            mask = self.data.game_year == recent_year
+            #print(self.data.loc[mask,'game_pk'].nunique())
+            if self.data.loc[mask,'game_pk'].nunique() >= year_sens:
                 found = True
             else:
                 recent_year -= 1
              
-        train_set = self.data[self.data.game_year < recent_year]
-        test_set = self.data[self.data.game_year == recent_year]
+        self.data['game_date'] = pd.to_datetime(self.data['game_date'], format='%Y-%m-%d', errors='coerce')
+        train_set = self.data[self.data.game_date.dt.year < int(recent_year)]
+        test_set = self.data[self.data.game_date.dt.year == int(recent_year)]
         
         train_set.to_csv(file_name_train)
         test_set.to_csv(file_name_test)

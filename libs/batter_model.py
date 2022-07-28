@@ -15,10 +15,10 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 
 def batter_prep(df):
-    prep = gfp.BatterPrep()
+    batter_prep = gfp.BatterPrep()
     
-    temp_data = batter_prep.data_prep(train_set)
-    temp_data = batter_prep.data_clean(train)
+    temp_data = batter_prep.data_prep(df)
+    temp_data = batter_prep.data_clean(temp_data)
     
     X = temp_data.loc[:,~temp_data.columns.isin(['next_estimated_ba_using_speedangle','batter'])]
     y = temp_data.loc[:,temp_data.columns.isin(['next_estimated_ba_using_speedangle'])]
