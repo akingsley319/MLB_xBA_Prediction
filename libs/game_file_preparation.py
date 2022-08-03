@@ -61,7 +61,7 @@ class GenericPrep:
     def per_pa(self,data):
         mask = (data.next_play != 0)
         data.loc[mask,'k_per_pa'] = data.loc[mask,'k'] / data.loc[mask,'pa']
-        data.loc[mask,'bb_per_pa'] = data.loc[mask,'bb'] / data.loc[mask,'pa']
+        data.loc[mask,'bb_per_pa'] = data.loc[mask,'bb'] / (data.loc[mask,'pa'] + data.loc[mask,'bb'])
         
         data[['k_per_pa','bb_per_pa']] = data[['k_per_pa','bb_per_pa']].fillna(0)
 
@@ -72,26 +72,22 @@ class MatchupPrep(GenericPrep):
     
         
 class PitcherPrep(GenericPrep):
-    def __init__(self,metric_cols=['pitcher','next_estimated_ba_using_speedangle','pa', 'pitch_count','play','next_play','k','bb','estimated_ba_using_speedangle','k_per_pa','bb_per_pa','day_of_week','month','year']):
-        self.metric_cols = metric_cols
-        self.initial_drop = drop_columns = ['Unnamed: 0', 'pitch_type', 'release_speed', 'release_pos_x', 'release_pos_z', 'batter', 'events', 'zone', 'game_type', 'stand', 'p_throws', 'home_team', 'away_team', 'bb_type', 'balls', 
-                'strikes', 'game_year', 'pfx_x', 'pfx_z', 'plate_x', 'plate_z', 'on_3b', 'on_2b', 'on_1b', 'outs_when_up', 'inning', 'fielder_2', 'vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'effective_speed', 
-                'release_spin_rate', 'release_extension', 'game_pk', 'fielder_3', 'fielder_4', 'fielder_5', 'fielder_6', 'fielder_7', 'fielder_8', 'fielder_9', 'release_pos_y', 'babip_value', 'at_bat_number',
-                'pitch_number', 'pitch_name', 'home_score', 'away_score', 'bat_score', 'fld_score', 'spin_axis', 'batter_name', 'pitcher_name', 'game_month', 'game_day', 'bat_event', 'spin_x', 'spin_z', 
-                'attribute_0', 'attribute_1', 'attribute_2', 'attribute_3', 'attribute_4', 'attribute_5', 'attribute_6', 'attribute_7', 'attribute_8']
+    def __init__(self, target='next_estimated_ba_using_speedangle'):
+        self.target = target
     
     def data_prep(self,data,depth=18,bin_size=6,roll_vars=['estimated_ba_using_speedangle','k_per_pa','bb_per_pa']):
-        df = data.copy()
-        df.drop(self.initial_drop,axis=1,inplace=True)
+        df = data[['estimated_ba_using_speedangle','bb','k','pa','pitcher','game_date']].copy()
         
         df = self.initial_clean(df)
-        df = df[self.metric_cols]
-        return self.depth_finish(df,depth,bin_size,roll_vars)
+        
+        print('pitcher columns: ' + str(df.columns))
+        df = self.depth_finish(df,depth,bin_size,roll_vars)
+        return df.dropna()
     
     def fill_dates(self,data):
         pd_out = pd.DataFrame()
         
-        for pitcher in data.pitcher.unique():
+        for pitcher in data['pitcher'].unique():
             temp_df = data[data.pitcher == pitcher]
             pd_out = pd_out.append(temp_df.asfreq('D'))
             pd_out['pitcher'].fillna(pitcher, inplace=True)
@@ -145,17 +141,20 @@ class PitcherPrep(GenericPrep):
             
     # rolling mean weighted by plate appearances
     def rolling_weighted_data(self,data,roll_amount,target):
-        data['weighted_pa'] = data.pa - data.bb
+        data['weighted_pa'] = data.pa
         data['weighted_target'] = data[target] * data.weighted_pa
         
         name = target + '_mean_weighted_' + str(roll_amount)
         
-        temp_df = data.groupby('pitcher')[['weighted_target','weighted_pa']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('pitcher')[['weighted_target','weighted_pa','bb']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
         
         mask = (temp_df.weighted_pa != 0)
-        temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / temp_df.loc[mask,'weighted_pa']
+        if 'bb' not in target:
+            temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / temp_df.loc[mask,'weighted_pa']
+        elif 'bb' in target:
+            temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / (temp_df.loc[mask,'weighted_pa'] + temp_df.loc[mask,'bb'])
         
-        temp_df.drop(['weighted_target','weighted_pa'],axis = 1,inplace=True)
+        temp_df.drop(['weighted_target','weighted_pa','bb'],axis = 1,inplace=True)
         data.drop(['weighted_target','weighted_pa'],axis=1,inplace=True)
         
         return data.merge(temp_df, on=['game_date','pitcher'], how='inner')
@@ -212,8 +211,9 @@ class BatterPrep(GenericPrep):
         data = self.depth_features(data,depth)
         
         data = self.data_clean(data)
+        print('batter columns: ' + str(data.columns))
         
-        return data
+        return data.dropna()
     
     # Correctly set dtype
     def type_set(self, data):
@@ -225,8 +225,9 @@ class BatterPrep(GenericPrep):
     # Fills missing days between batter's first and last appearance
     def fill_dates(self, data):
         pd_out = pd.DataFrame()
+        batters = list(data['batter'].unique())
         
-        for batter in data.batter.unique():
+        for batter in batters:
             temp_df = data[data.batter == batter]
             pd_out = pd_out.append(temp_df.asfreq('D'))
             pd_out['batter'].fillna(batter, inplace=True)
@@ -258,17 +259,20 @@ class BatterPrep(GenericPrep):
         
     # rolling mean weighted by plate appearances
     def rolling_weighted_data(self,data,roll_amount,target):
-        data['weighted_pa'] = data.pa - data.bb
+        data['weighted_pa'] = data.pa
         data['weighted_target'] = data[target] * data.weighted_pa
         
         name = target + '_mean_weighted_' + str(roll_amount)
         
-        temp_df = data.groupby('batter')[['weighted_target','weighted_pa']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('batter')[['weighted_target','weighted_pa','bb']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
         
         mask = (temp_df.weighted_pa != 0)
-        temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / temp_df.loc[mask,'weighted_pa']
+        if 'bb' not in target:
+            temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / temp_df.loc[mask,'weighted_pa']
+        elif 'bb' in target:
+            temp_df.loc[mask,name] = temp_df.loc[mask,'weighted_target'] / (temp_df.loc[mask,'weighted_pa'] + temp_df.loc[mask,'bb'])
         
-        temp_df.drop(['weighted_target','weighted_pa'],axis = 1,inplace=True)
+        temp_df.drop(['weighted_target','weighted_pa','bb'],axis = 1,inplace=True)
         data.drop(['weighted_target','weighted_pa'],axis=1,inplace=True)
         
         return data.merge(temp_df, on=['game_date','batter'], how='inner')
@@ -305,6 +309,7 @@ class BatterPrep(GenericPrep):
 class GamePrep:
     def __init__(self, data, game_condensed_list=None, weight=1000.0):
         self.data = data.sort_values(['game_date','pitcher','batter'])
+        self.data = self.data[self.data.game_date.notna()].copy()
         self.weight = weight
         self.event_def = ['single','double','home_run','triple','field_out',
                       'grounded_into_double_play','force_out','double_play',
@@ -451,7 +456,16 @@ class GamePrep:
                     values[col + '_list'] = list(game_temp[col])
                     
                 elif col == 'game_date':
-                    values[col] = game_temp['game_date'].mode()
+                    values[col] = game_temp['game_date'].unique()[0]
+                    
+                elif col == 'batter':
+                    values[col] = game_temp['batter'].unique()[0]
+                           
+                elif col == 'pitcher':
+                    values[col] = game_temp['pitcher'].unique()[0]
+                    
+                elif 'team' in col:
+                    values[col] = game_temp[col].unique()[0]
                     
                 else:
                     val_temp = list(game_temp[col])
@@ -502,7 +516,7 @@ class GamePrep:
 #        attr_col = []
 #        attr_val = 0
         
-        pitch_count = int(data['attribute_1'].count())
+        pitch_count = len(data['attribute_1'])
         
         for col in data.columns:
             
@@ -536,6 +550,9 @@ class GamePrep:
             elif col == 'pitcher':
                 values['pitcher'] = data.pitcher.unique()[0]
                 
+            elif col == 'game_date':
+                values['game_date'] = data.game_date.unique()[0]
+                
 # =============================================================================
 #             elif col == 'estimated_ba_using_speedangle':
 #                 mask = data['estimated_ba_using_speedangle'].notna()
@@ -544,7 +561,7 @@ class GamePrep:
 # =============================================================================
             
             else:
-                val = data[col].unique()[::-1]
+                val = list(data[col].unique())[-1]
                 
                 values[col] = val
         

@@ -304,7 +304,9 @@ class Cleaner:
         for item in bb_type_list:
             self.data[category].astype('float')
             median_table = self.create_median_table(orig_data_l[orig_data_l.bb_type == item], category, events_list)
-            self.data[self.data.bb_type == item][category] = self.data[self.data.bb_type == item].apply(lambda x: handle_median(x.events, x[category]), axis=1)
+            
+            mask = (self.data.bb_type == item)
+            self.data.loc[mask,category] = self.data[mask].apply(lambda x: handle_median(x.events, x[category]), axis=1)
     
     #Removes headers that found their way into the dataset
     def clean_header(self):

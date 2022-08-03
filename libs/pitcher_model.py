@@ -40,12 +40,12 @@ def pitcher_prep(df):
 
 # Performs performance modeling and reutrns the model
 def pitcher_perf(x_train,y_train,param_grid=None,intense=False,save=False):
-    pitcher_model = gfp.PitcherPerf()
+    pitcher_model = PitcherPerf()
     
     if intense == True:
-        pitcher_model.fit_rf_intense(x_train,y_train,replace=True)
+        pitcher_model.fit_rf_intense(x_train,y_train,param_grid=param_grid,replace=True)
     elif intense == False:
-        pitcher_model.fit_rf(x_train,y_train,param_grid,replace=True)
+        pitcher_model.fit_rf(x_train,y_train,replace=True)
         
     if save == True:
         pitcher_model.save_model()

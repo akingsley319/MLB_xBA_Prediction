@@ -27,12 +27,12 @@ def batter_prep(df):
     return X, y, batter
 
 def batter_perf(x_train,y_train,param_grid=None,intense=False,save=False):
-    batter_model = gfp.Batter()
+    batter_model = Batter()
     
     if intense == True:
-        batter_model.fit_rf_intense(x_train,y_train,replace=True)
+        batter_model.fit_rf_intense(x_train,y_train,param_grid=param_grid,replace=True)
     elif intense == False:
-        batter_model.fit_rf(x_train,y_train,param_grid,replace=True)
+        batter_model.fit_rf(x_train,y_train,replace=True)
         
     if save == True:
         batter_model.save_model()

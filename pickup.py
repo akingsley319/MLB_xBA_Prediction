@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 22 11:17:26 2022
+Created on Thu Jul 28 12:59:25 2022
 
 @author: cubs1
 """
@@ -28,51 +28,12 @@ import pitcher_model as pm
 import batter_model as bm
 import matchup_model as mm
 
-
-# create game files
-# player_map will take 8 seconds between web scraping players
-# if desired, uncomment the "ga.player_map(df)" line
-
-ga.game_file_creation(end_year = date.today().year)
-df = pd.read_csv('data/game_files.csv', sep=';', encoding="latin-1")
-
-#ga.player_map(df)
-
-print('data retrieved')
-
-
-# clean files
-data = cgf.clean_data(df)
-data.to_csv('data/game_files_clean.csv')
-
-print('data cleaned')
-
-
-# train-test split
-train, test, train_limit = gfp.train_test_split(data,pitch_limit=100,year_sens=1000)
-print('split completed')
-
-
-# clustering
-pitch_mod = pm.Pitcher(train_limit)
-_, score, n_clus = pitch_mod.full_package(covar_goal = 0.95)
-
-print('clustering modeled')
-
-train = pitch_mod.apply_cluster_modeling(train)
-test = pitch_mod.apply_cluster_modeling(test)
-
-train.to_csv('data/train/train_set.csv')
-test.to_csv('data/test/test_set.csv')
-
-
-print('clustering applied')
-
+train = pd.read_csv('data/train/train_set.csv')
+test = pd.read_csv('data/test/test_set.csv')
 
 # format files
 train_prep = gfp.GamePrep(train)
 test_prep = gfp.GamePrep(test)
-
 
 # Train Batter Dataset
 train_batters = train_prep.return_batters()
@@ -107,12 +68,6 @@ print('matchups formatted')
 
 # batter recent prediction
 x_batter_train, y_batter_train, batter_train = bm.batter_prep(train_batters)
-
-for col in x_batter_train:
-    print(col + ": " + str(np.isinf(x_batter_train[col]).values.sum()))
-    
-print(y_batter_train.isna().sum())
-
 x_batter_test, y_batter_test, batter_test = bm.batter_prep(test_batters)
 
 batter_perf_model = bm.batter_perf(x_batter_train,y_batter_train,param_grid=None,intense=False,save=True)
@@ -124,18 +79,6 @@ print('batters predicted')
 x_pitcher_train, y_pitcher_train, pitcher_train = pm.pitcher_prep(train_pitchers)
 x_pitcher_test, y_pitcher_test, pitcher_test = pm.pitcher_prep(test_pitchers)
 
-for col in x_pitcher_train:
-    print(col + ": " + str(x_pitcher_train[col].isna().sum()))
-    
-print(y_pitcher_train.isna().sum())
-
 pitcher_perf_model = pm.pitcher_perf(x_pitcher_train,y_pitcher_train,param_grid=None,intense=False,save=True)
 
 print('pitchers predicted')
-
-
-# matchup expectations
-#x_matchup_train, y_matchup_train, matchup_train = mm.matchup_prep(train_matchups)
-#x_matchup_test, y_matchup_test, matchup_test = mm.matchup_prep(test_matchups)
-
-#matchup_per_model = mm.matchup_perf(x_matchup_train, y_matchup_train,param_grid=None,intense=False,save=True)
