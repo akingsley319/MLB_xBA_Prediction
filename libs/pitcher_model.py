@@ -23,11 +23,12 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 
 import game_file_preparation as gfp
+import split_data as sd
 import pickle as pkl
 
 # Performs cleaning of dataset and returns the x and y components
 def pitcher_prep(df):
-    pitcher_prep = gfp.PitcherPrep()
+    pitcher_prep = sd.PitcherPrep()
     
     temp_data = pitcher_prep.data_prep(df)
     temp_data = pitcher_prep.data_clean(temp_data)

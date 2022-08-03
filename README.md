@@ -8,19 +8,10 @@ The final project will involve predictions based on the recent performance of ba
 
 ## Project Use
 
-It will be later that I will condense all the different files needed to run this project. The current design is for segmenting the project into understandable steps.
 
 For a fresh file run (which will take a long time with the unoptimized code), run the "fresh_setup.py". If a player map for ids is desired - this will increase run time due to delay between runs (web scraping practice) - make sure to uncomment the line in the code.
 
-The file "create_game_files.py" will retrieve the designated game files from the BaseballSavant API and download it all as a csv file. It will also sift through player ids and create a map of player names and player ids by scraping from each player's official MLB page.
-
-The file "pitcher_cluster_run.py" will cluster pitcher pitches, providing a framework for matchup potential. This process will also clean the game files. Analysis of this process can be found in "cluster_analysis.ipynb".
-
-"forecasting.py" prepares files (currently only batter) for modeling use.
-
-"batter_performance_modeling.py" models and properly formats data for recent performance prediction.
-
-"pitcher_performance_modeling.py" models and properly formats data for recent performance prediction.
+The ability for project updating will be included at a later date. The code is currently focusing on achieving results with the data currently held for it.
 
 ## To Do List
 

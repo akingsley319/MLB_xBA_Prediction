@@ -10,12 +10,13 @@ import numpy as np
 import pickle as pkl
 
 import game_file_preparation as gfp
+import split_data as sd
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
 
 def batter_prep(df):
-    batter_prep = gfp.BatterPrep()
+    batter_prep = sd.BatterPrep()
     
     temp_data = batter_prep.data_prep(df)
     temp_data = batter_prep.data_clean(temp_data)
