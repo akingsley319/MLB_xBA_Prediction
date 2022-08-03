@@ -27,6 +27,7 @@ import game_file_preparation as gfp
 import pitcher_model as pm
 import batter_model as bm
 import matchup_model as mm
+import split_data as sd
 
 
 # create game files
