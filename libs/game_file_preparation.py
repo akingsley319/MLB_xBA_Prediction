@@ -102,8 +102,8 @@ class GamePrep:
         elif player_type == 'pitcher':
             player_list = game.loc[:,'pitcher'].unique()
         elif player_type == 'both':
-            pitcher_list = game.loc[:,'batter'].unique()
-            batter_list = game.loc[:,'pitcher'].unique()
+            batter_list = game.loc[:,'batter'].unique()
+            pitcher_list = game.loc[:,'pitcher'].unique()
             
             player_list = [(pitcher,batter) for pitcher in pitcher_list for batter in batter_list]
         

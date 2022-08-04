@@ -61,8 +61,25 @@ class GenericPrep:
 
 
 class MatchupPrep(GenericPrep):
-    def __init__(self):
-        pass
+    def __init__(self, target='next_estimated_ba_using_speedangle'):
+        self.target = target
+        
+    def initial_clean(self,data):
+        self.play(data)
+        data = self.game_date_to_index(data)
+        data = self.type_set(data)
+        data = self.shift_target(data)    
+        
+        return data
+    
+    def type_set(self,data):
+        int_cols = ['batter','pitcher','pitch_count','play','k','bb']
+        float_cols = [col for col in data.columns if ('cluster' in col) & ('list' not in col)]
+        float_cols = float_cols.append('estimated_ba_using_speedangle')
+        
+        data.loc[:,data.columns.isin(int_cols)] = data.loc[:,data.columns.isin(int_cols)].astype('int')
+        data.loc[:,data.columns.isin(float_cols)] = data.loc[:,data.columns.isin(float_cols)].astype('float')
+    
     
         
 class PitcherPrep(GenericPrep):
