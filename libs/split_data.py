@@ -61,16 +61,189 @@ class GenericPrep:
 
 
 class MatchupPrep(GenericPrep):
-    def __init__(self, target='next_estimated_ba_using_speedangle'):
+    def __init__(self, target='estimated_ba_using_speedangle'):
         self.target = target
         
-    def initial_clean(self,data):
-        self.play(data)
+    def data_prep(self,data,depth_num=30,depth_min_pitcher=3,depth_min_batter=10,depth_type='D'):
         data = self.game_date_to_index(data)
-        data = self.type_set(data)
-        data = self.shift_target(data)    
+        data = self.data_focus(data)
+        
+        pitcher_hard_data = self.rolling_cluster_hard(data,depth_num,depth_min_pitcher,depth_type)
+        pitcher_soft_data = self.rolling_cluster_soft(data,depth_num,depth_min_pitcher,depth_type)
+        batter_data = self.rolling_batter(data,depth_num,depth_min_batter,depth_type)
+        
+        data = data.loc[:,['pitcher','batter','estimated_ba_using_speedangle']]
+        data.dropna(inplace=True)
+        
+        data = data.set_index(['pitcher',data.index])
+        data = data.join(pitcher_hard_data,on=['pitcher','game_date'])
+        data = data.join(pitcher_soft_data,on=['pitcher','game_date'])
+        
+        data = data.reset_index().set_index(['batter','game_date'])
+        data = data.join(batter_data,on=['batter','game_date'])
+        
+        data = data.set_index(['pitcher',data.index])
+        
+        return data.dropna()
+    
+    # COmbines batter steps
+    def rolling_batter(self,data,depth_num,depth_min=10,depth_type='D'):
+        data = data.copy()
+        data = self.explode(data)
+        data = self.cluster_day(data)
+        data = self.rolling_xba(data,depth_num,depth_min=10,depth_type='D')
         
         return data
+    
+    # Expand list columns detailing each event of atbat
+    def explode(self,data):
+        keep_cols = [col for col in data.columns if 'list' in col]
+        keep_cols.extend(['batter'])
+        
+        data = data[keep_cols]
+        keep_cols.remove('batter')
+            
+        for col in keep_cols:
+            data[col] = data[col].apply(lambda x: x.translate({ord(i): None for i in ' []'}).split(','))
+            
+        data = data.set_index(['batter',data.index]).apply(pd.Series.explode).reset_index(level=0)
+        data = data.replace('nan',np.nan)
+        data.dropna(inplace=True)
+        data[keep_cols] = data[keep_cols].astype('float')
+        return data
+    
+    # Takes expanded columns and condenses results into day focused results
+    # Takes a weighted mean for handling soft clustering
+    def cluster_day(self,data):
+        data = data.apply(lambda x: x.abs())
+        cluster_cols = [col for col in data.columns if 'cluster' in col]
+        cluster_cols.append('estimated_ba_using_speedangle_list')
+        col_names = [col + '_agg' for col in cluster_cols]
+        
+        def weighted_mean(x):
+            list_out = []
+            for i in range(len(cluster_cols)):
+                try:
+                    wm = np.average(x['estimated_ba_using_speedangle_list'],weights=x[cluster_cols[i]])
+                except ZeroDivisionError:
+                    wm = 0
+                list_out.append(wm)
+            return list_out
+        
+        temp_df = pd.DataFrame()
+        temp_df[0] = data.groupby(['batter','game_date'])[cluster_cols].apply(lambda x: weighted_mean(x))
+        temp_data = data.groupby(['batter','game_date'])[cluster_cols].sum()
+        temp_df = pd.DataFrame(temp_df[0].values.tolist(), index=temp_df.index, columns=col_names)
+        temp_df.columns = col_names
+        
+        temp_df = temp_df.join(temp_data)
+        
+        return temp_df.reset_index(level=0)
+    
+    # Creates a rolling tracker for batter performance against certain pitch cluster
+    def rolling_xba(self,data,depth_num,depth_min=10,depth_type='D'):
+        cluster_cols = [col for col in data.columns if 'cluster' in col and 'agg' in col]
+        weight_cols = [col for col in data.columns if 'cluster' in col and 'list' in col and 'agg' not in col]
+        
+        col_names = [col.replace('_list','_estimated') for col in weight_cols]
+        
+        depth = str(depth_num) + depth_type
+        
+        for i in range(len(cluster_cols)):
+            data[cluster_cols[i]] = data[cluster_cols[i]] * data[weight_cols[i]]
+        
+        data = data.apply(lambda x: x.abs())
+        
+        temp_df = pd.DataFrame()
+        temp_data = pd.DataFrame()
+        temp_df = data.groupby(['batter'])[cluster_cols].rolling(depth,min_periods=depth_min,closed='left').sum()
+        temp_data = data.groupby(['batter'])[weight_cols].rolling(depth,min_periods=depth_min,closed='left').sum()
+        
+        temp_df = temp_df.join(temp_data)
+        
+        for i in range(len(cluster_cols)):
+            temp_df[col_names[i]] = temp_df[cluster_cols[i]] / temp_df[weight_cols[i]]
+        
+        temp_df = temp_df[col_names].reset_index(level=0)
+        temp_df.replace([np.inf,-np.inf],0,inplace=True)
+        temp_df = temp_df.set_index(['batter',temp_df.index])
+        
+        temp_df.dropna(how='all',inplace=True)
+        return temp_df.fillna(0)
+    
+    # Creates a rolling tracker of pitch clusters thrown in atbat defining situations using the soft clustering results
+    # mean is taken and the max & min are recorded
+    def rolling_cluster_soft(self,data,depth_num,depth_min=3,depth_type="D"):
+        data = data.copy()
+        
+        cluster_cols = [col for col in data.columns if 'cluster_attribute' in col and 'list' not in col]
+        cluster_cols.extend(['pa','bb'])
+        depth = str(depth_num) + depth_type
+        
+        data.index = pd.to_datetime(data.index)
+        
+        data = data.groupby(['pitcher',data.index])[cluster_cols].sum().reset_index(level=0)
+        temp_data = data.groupby(['pitcher'], as_index=False).rolling(depth,min_periods=depth_min,closed='left')[cluster_cols].mean()
+        
+        col_names = []
+        for col in temp_data.columns:
+            if col in cluster_cols:
+                col_names.append(col + '_roll')
+            else:
+                col_names.append(col)
+        temp_data.columns = col_names
+        temp_data = temp_data.reset_index(level=0)
+        
+        soft_cols = [col for col in temp_data.columns if '_roll' in col and 'bb_' not in col and 'k_' not in col and 'pa_' not in col]
+        
+        temp_data = temp_data.set_index(['pitcher',temp_data.index])
+        return temp_data[soft_cols].dropna()
+    
+    # creates a rolling tracker of pitch clusters thrown in atbat defining situations
+    def rolling_cluster_hard(self,data,depth_num,depth_min=3,depth_type='D'):
+        data = data.copy()
+        
+        cluster_cols = [col for col in data.columns if 'cluster' in col and 'attribute' not in col and 'list' not in col]
+        cluster_cols.extend(['pa','bb'])
+        depth = str(depth_num) + depth_type
+        
+        data.index = pd.to_datetime(data.index)
+        
+        data = data.groupby(['pitcher',data.index])[cluster_cols].sum().reset_index(level=0)
+        temp_data = data.groupby(['pitcher'], as_index=False)[cluster_cols].rolling(depth,closed='left',min_periods=depth_min).sum()
+        temp_data.reset_index(level=0)
+        
+        col_names = []
+        for col in temp_data.columns:
+            if col in cluster_cols:
+                col_names.append(col + '_roll')
+            else:
+                col_names.append(col)
+        temp_data.columns = col_names
+        
+        temp_data = self.hard_per_pa(temp_data)
+        
+        hard_cols = [col for col in temp_data.columns if 'per_pa' in col]
+        temp_data = temp_data.set_index(['pitcher',temp_data.index])
+        
+        return temp_data[hard_cols].dropna()
+
+    # transforms clusters into per-pa instances
+    def hard_per_pa(self,data):
+        cluster_cols = [col for col in data.columns if 'cluster' in col and 'attribute' not in col and 'list' not in col and 'roll' in col]
+        col_names = [item + '_per_pa' for item in cluster_cols]
+        
+        for i in range(len(col_names)):
+            data[col_names[i]] = data[cluster_cols[i]] / (data['pa_roll'] + data['bb_roll'])
+            
+        return data
+    
+    # restricts columns in data to only necessary columns
+    def data_focus(self,data):
+        columns_used = [col for col in data if ('cluster' in col)]
+        columns_used.extend(['batter', 'pitcher', 'bb', 'events', 'pa', 'estimated_ba_using_speedangle', 'estimated_ba_using_speedangle_list'])
+        
+        return data[columns_used]
     
     def type_set(self,data):
         int_cols = ['batter','pitcher','pitch_count','play','k','bb']
