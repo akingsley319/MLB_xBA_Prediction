@@ -31,7 +31,8 @@ import split_data as sd
 
 
 # create game files
-# player_map will take 8 seconds between web scraping players
+# player_map will take 8 seconds between web scraping players, which will take
+# a considerable amount of time.
 # if desired, uncomment the "ga.player_map(df)" line
 
 ga.game_file_creation(end_year = date.today().year)
@@ -136,7 +137,7 @@ print('pitchers predicted')
 
 
 # matchup expectations
-#x_matchup_train, y_matchup_train, matchup_train = mm.matchup_prep(train_matchups)
-#x_matchup_test, y_matchup_test, matchup_test = mm.matchup_prep(test_matchups)
+x_matchup_train, y_matchup_train, matchup_train = mm.matchup_prep(train_matchups)
+x_matchup_test, y_matchup_test, matchup_test = mm.matchup_prep(test_matchups)
 
-#matchup_per_model = mm.matchup_perf(x_matchup_train, y_matchup_train,param_grid=None,intense=False,save=True)
+matchup_per_model = mm.matchup_perf(x_matchup_train, y_matchup_train,param_grid=None,intense=False,save=True)
