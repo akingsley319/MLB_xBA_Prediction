@@ -21,8 +21,12 @@ def batter_prep(df):
     temp_data = batter_prep.data_prep(df)
     temp_data = batter_prep.data_clean(temp_data)
     
-    X = temp_data.loc[:,~temp_data.columns.isin(['next_estimated_ba_using_speedangle','batter'])]
-    y = temp_data.loc[:,temp_data.columns.isin(['next_estimated_ba_using_speedangle'])]
+    X = temp_data.loc[:,~temp_data.columns.isin(['next_estimated_ba_using_speedangle'])]
+    y = temp_data.loc[:,temp_data.columns.isin(['next_estimated_ba_using_speedangle','batter'])]
+    
+    X = X.reset_index().set_index(['batter','game_date'])
+    y = y.reset_index().set_index(['batter','game_date'])
+    
     batter = temp_data['batter']
     
     return X, y, batter
