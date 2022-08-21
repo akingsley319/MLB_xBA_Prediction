@@ -33,8 +33,12 @@ def pitcher_prep(df):
     temp_data = pitcher_prep.data_prep(df)
     temp_data = pitcher_prep.data_clean(temp_data)
     
-    X = temp_data.loc[:,~temp_data.columns.isin(['next_estimated_ba_using_speedangle','pitcher'])]
-    y = temp_data.loc[:,temp_data.columns.isin(['next_estimated_ba_using_speedangle'])]
+    X = temp_data.loc[:,~temp_data.columns.isin(['estimated_ba_using_speedangle'])]
+    y = temp_data.loc[:,temp_data.columns.isin(['estimated_ba_using_speedangle','pitcher'])]
+    
+    X = X.reset_index().set_index(['pitcher','game_date'])
+    y = y.reset_index().set_index(['pitcher','game_date'])
+    
     pitcher = temp_data['pitcher']
     
     return X, y, pitcher

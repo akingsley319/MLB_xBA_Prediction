@@ -11,16 +11,22 @@ The final project will involve predictions based on the recent performance of ba
 
 For a fresh file run (which will take a long time with the unoptimized code), run the "fresh_setup.py". If a player map for ids is desired - this will increase run time due to delay between runs (web scraping practice) - make sure to uncomment the line in the code.
 
+All files related to the processes is stored in the 'libs' directory.
+
+'cluster_analysis.ipynb' and 'result_exploration.ipynb' are built to provide feedback in a way that requires no additional coding. 
+
 The ability for project updating will be included at a later date. The code is currently focusing on achieving results with the data currently held for it.
 
 ## To Do List
 
-This is the to-do list which should be completed by August 21st, 2022 for submission for my Master's Program for Data Science through Regis University.
+Future improvements that are planned to be added include:
 
-* Provide feature engineering to clusters for matchup purposes and respresentation of pitcher repertoire 
-* Perform modeling of matchup result modeling
-* Combination of created models
-* Condense files that need to be run for less file clutter and better optimized use
+* Cluster optimization to improve matchup model results.
+* Add the ability to introduce weight to pitches in an at bat for batter performance calculation. Currently, only the final pitch in the at bat is used.
+* Implement better and faster for initial file preparation.
+* Introduce new models to test against the current models in place.
+* Introduce updateable graphs to this README.md for easier result viewing.
+* Enable the project to update the information it has stored in terms of game files.
 
 ## Resources
 

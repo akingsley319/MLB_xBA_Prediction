@@ -107,14 +107,9 @@ test_matchups.to_csv('data/test/matchups_test.csv')
 print('matchups formatted')
 
 
+
 # batter recent prediction
 x_batter_train, y_batter_train, batter_train = bm.batter_prep(train_batters)
-
-for col in x_batter_train:
-    print(col + ": " + str(np.isinf(x_batter_train[col]).values.sum()))
-    
-print(y_batter_train.isna().sum())
-
 x_batter_test, y_batter_test, batter_test = bm.batter_prep(test_batters)
 
 batter_perf_model = bm.batter_perf(x_batter_train,y_batter_train,param_grid=None,intense=False,save=True)
@@ -122,14 +117,17 @@ batter_perf_model = bm.batter_perf(x_batter_train,y_batter_train,param_grid=None
 print('batters predicted')
 
 
+# =============================================================================
+# train_pitchers = pd.read_csv('data/train/pitchers_train.csv')
+# test_pitchers = pd.read_csv('data/test/pitchers_test.csv')
+# 
+# zzz = train_pitchers.loc[train_pitchers['pitcher'] == 453286]
+# yyz = x_pitcher_train.loc[x_pitcher_train.index.get_level_values('pitcher') == 453286]
+# =============================================================================
+
 # pitcher recent prediction
 x_pitcher_train, y_pitcher_train, pitcher_train = pm.pitcher_prep(train_pitchers)
 x_pitcher_test, y_pitcher_test, pitcher_test = pm.pitcher_prep(test_pitchers)
-
-for col in x_pitcher_train:
-    print(col + ": " + str(x_pitcher_train[col].isna().sum()))
-    
-print(y_pitcher_train.isna().sum())
 
 pitcher_perf_model = pm.pitcher_perf(x_pitcher_train,y_pitcher_train,param_grid=None,intense=False,save=True)
 
@@ -137,7 +135,7 @@ print('pitchers predicted')
 
 
 # matchup expectations
-x_matchup_train, y_matchup_train, matchup_train = mm.matchup_prep(train_matchups)
-x_matchup_test, y_matchup_test, matchup_test = mm.matchup_prep(test_matchups)
+x_matchup_train, y_matchup_train = mm.matchup_prep(train_matchups)
+x_matchup_test, y_matchup_test = mm.matchup_prep(test_matchups)
 
 matchup_per_model = mm.matchup_perf(x_matchup_train, y_matchup_train,param_grid=None,intense=False,save=True)

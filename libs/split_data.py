@@ -28,7 +28,10 @@ class GenericPrep:
     def remove_rows(self,data):
         data.dropna(axis=0,inplace=True)
         
-        mask = (data.next_play != 0)
+        if 'next_play' in data.columns:
+            mask = (data.next_play != 0)
+        elif 'next_play' not in data.columns:
+            mask = (data.pa != 0)
         
         return data.loc[mask,:]
     
@@ -53,7 +56,11 @@ class GenericPrep:
         data['year'] = data.index.year 
     
     def per_pa(self,data):
-        mask = (data.next_play != 0)
+        if 'next_play' in data.columns:
+            mask = (data.next_play != 0)
+        elif 'next_play' not in data.columns:
+            mask = (data.play != 0)
+            
         data.loc[mask,'k_per_pa'] = data.loc[mask,'k'] / data.loc[mask,'pa']
         data.loc[mask,'bb_per_pa'] = data.loc[mask,'bb'] / (data.loc[mask,'pa'] + data.loc[mask,'bb'])
         
@@ -197,7 +204,9 @@ class MatchupPrep(GenericPrep):
         soft_cols = [col for col in temp_data.columns if '_roll' in col and 'bb_' not in col and 'k_' not in col and 'pa_' not in col]
         
         temp_data = temp_data.set_index(['pitcher',temp_data.index])
-        return temp_data[soft_cols].dropna()
+        
+        temp_data = temp_data[soft_cols].dropna(how='all',subset=soft_cols)
+        return temp_data.fillna(0)
     
     # creates a rolling tracker of pitch clusters thrown in atbat defining situations
     def rolling_cluster_hard(self,data,depth_num,depth_min=3,depth_type='D'):
@@ -226,7 +235,8 @@ class MatchupPrep(GenericPrep):
         hard_cols = [col for col in temp_data.columns if 'per_pa' in col]
         temp_data = temp_data.set_index(['pitcher',temp_data.index])
         
-        return temp_data[hard_cols].dropna()
+        temp_data = temp_data[hard_cols].dropna(how='all',subset=hard_cols)
+        return temp_data.fillna(0)
 
     # transforms clusters into per-pa instances
     def hard_per_pa(self,data):
@@ -256,17 +266,17 @@ class MatchupPrep(GenericPrep):
     
         
 class PitcherPrep(GenericPrep):
-    def __init__(self, target='next_estimated_ba_using_speedangle'):
+    def __init__(self, target='estimated_ba_using_speedangle'):
         self.target = target
     
-    def data_prep(self,data,depth=18,bin_size=6,roll_vars=['estimated_ba_using_speedangle','k_per_pa','bb_per_pa']):
+    def data_prep(self,data,depth=22,bin_size=7,roll_vars=['estimated_ba_using_speedangle','k_per_pa','bb_per_pa']):
         df = data[['estimated_ba_using_speedangle','bb','k','pa','pitcher','game_date']].copy()
         
         df = self.initial_clean(df)
         
-        print('pitcher columns: ' + str(df.columns))
+        #print('pitcher columns: ' + str(df.columns))
         df = self.depth_finish(df,depth,bin_size,roll_vars)
-        return df.dropna()
+        return df
     
     def fill_dates(self,data):
         pd_out = pd.DataFrame()
@@ -304,16 +314,17 @@ class PitcherPrep(GenericPrep):
         data = self.fill_dates(data)
         self.date_info(data)
         data = self.type_set(data)
-        data = self.shift_target(data)    
+        #data = self.shift_target(data)    
         self.per_pa(data)
         
         return data
     
     # rolling mean by date
-    def rolling_data(self,data,roll_amount,target):
+    def rolling_data(self,data,roll_amount,target,roll_min):
         mean_name = target + '_mean_' + str(roll_amount)
+        roll_amount = str(roll_amount) + 'D'
         
-        temp_df = data.groupby('pitcher')[[target,'play']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('pitcher')[[target,'play']].rolling(roll_amount,min_periods=roll_min,closed='left').sum().reset_index(level=0,drop=False)
         temp_df.columns = ['pitcher', target, 'play']
         
         mask = (temp_df.play != 0)
@@ -324,13 +335,14 @@ class PitcherPrep(GenericPrep):
         return data.merge(temp_df, on=['game_date','pitcher'])
             
     # rolling mean weighted by plate appearances
-    def rolling_weighted_data(self,data,roll_amount,target):
+    def rolling_weighted_data(self,data,roll_amount,target,roll_min):
         data['weighted_pa'] = data.pa
         data['weighted_target'] = data[target] * data.weighted_pa
         
         name = target + '_mean_weighted_' + str(roll_amount)
+        roll_amount = str(roll_amount) + 'D'
         
-        temp_df = data.groupby('pitcher')[['weighted_target','weighted_pa','bb']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('pitcher')[['weighted_target','weighted_pa','bb']].rolling(roll_amount,min_periods=roll_min,closed='left').sum().reset_index(level=0,drop=False)
         
         mask = (temp_df.weighted_pa != 0)
         if 'bb' not in target:
@@ -365,8 +377,9 @@ class PitcherPrep(GenericPrep):
         for item in roll_vars:
             for i in range(1,depth+1):
                 if i % bin_size == 0:
-                    temp_df = self.rolling_data(temp_df,i,item)
-                    temp_df = self.rolling_weighted_data(temp_df,i,item)
+                    roll_min = int(i / bin_size)
+                    temp_df = self.rolling_data(temp_df,i,item,roll_min)
+                    temp_df = self.rolling_weighted_data(temp_df,i,item,roll_min)
         temp_df = self.lag_features(temp_df,depth)
         
         return temp_df
@@ -395,7 +408,7 @@ class BatterPrep(GenericPrep):
         data = self.depth_features(data,depth)
         
         data = self.data_clean(data)
-        print('batter columns: ' + str(data.columns))
+        #print('batter columns: ' + str(data.columns))
         
         return data.dropna()
     
@@ -428,10 +441,11 @@ class BatterPrep(GenericPrep):
         return data
     
     # rolling mean by date
-    def rolling_data(self,data,roll_amount,target):
+    def rolling_data(self,data,roll_amount,target,roll_min):
         mean_name = target + '_mean_' + str(roll_amount)
+        roll_amount = str(roll_amount) + 'D'
         
-        temp_df = data.groupby('batter')[[target,'play']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('batter')[[target,'play']].rolling(roll_amount,min_periods=roll_min).sum().reset_index(level=0,drop=False)
         temp_df.columns = ['batter', target, 'play']
         
         mask = (temp_df.play != 0)
@@ -442,13 +456,14 @@ class BatterPrep(GenericPrep):
         return data.merge(temp_df, on=['game_date','batter'])
         
     # rolling mean weighted by plate appearances
-    def rolling_weighted_data(self,data,roll_amount,target):
+    def rolling_weighted_data(self,data,roll_amount,target,roll_min):
         data['weighted_pa'] = data.pa
         data['weighted_target'] = data[target] * data.weighted_pa
         
         name = target + '_mean_weighted_' + str(roll_amount)
+        roll_amount = str(roll_amount) + 'D'
         
-        temp_df = data.groupby('batter')[['weighted_target','weighted_pa','bb']].rolling(roll_amount).sum().reset_index(level=0,drop=False)
+        temp_df = data.groupby('batter')[['weighted_target','weighted_pa','bb']].rolling(roll_amount,min_periods=roll_min).sum().reset_index(level=0,drop=False)
         
         mask = (temp_df.weighted_pa != 0)
         if 'bb' not in target:
@@ -483,8 +498,9 @@ class BatterPrep(GenericPrep):
         for item in roll_vars:
             for i in range(1,depth+1):
                 if i % 5 == 0:
-                    temp_df = self.rolling_data(temp_df,i,item)
-                    temp_df = self.rolling_weighted_data(temp_df,i,item)
+                    roll_min = int((i / 5)+1)
+                    temp_df = self.rolling_data(temp_df,i,item,roll_min)
+                    temp_df = self.rolling_weighted_data(temp_df,i,item,roll_min)
         temp_df = self.lag_features(temp_df,depth)
         
         return temp_df
