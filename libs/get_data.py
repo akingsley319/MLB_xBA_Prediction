@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 from pybaseball import statcast
+import re
 
 def savant_search(season, team, home_road, csv=False, sep=';'):
     """Return detail-level Baseball Savant search results.
@@ -163,18 +164,23 @@ def game_file_update(file_location="data/game_files.csv"):
     
     
 def find_latest_data(file_location):
-    with open(file_location) as f:
+    with open(file_location,encoding="latin-1") as f:
         f.readline()
-        first = f.readline.strip()
-        start = first.find('2',2,5)
-        end = start + 9
-        last_date = datetime.datetime.strptime(first[start,end])
+        first = f.readline().strip()
+        start = first.find('2',2,15)
+        end = start + 10
+        print(first[int(start):int(end)])
+        last_date = datetime.strptime(first[int(start):int(end)],'%Y-%m-%d')
+        r = re.compile('.*-.*-.*')
         for line in f:
-            start = line.find('2',2,5)
-            end = start + 9
-            date = datetime.datetime.strptime(line[start,end])
-            if last_date > last_date:
-                last_date = date
+            start = line.find('2',2,15)
+            end = start + 10
+            date_str = line[int(start):int(end)]
+            if r.match(date_str) is not None:
+                date = datetime.strptime(date_str,'%Y-%m-%d')
+                if date > last_date:
+                    last_date = date
+    print('last date before update: ' + last_date.strftime('%Y-%m-%d'))
     return last_date
  
 # Maps player ids and player names
