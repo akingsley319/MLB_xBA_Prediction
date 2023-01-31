@@ -12,6 +12,8 @@ import numpy as np
 import requests
 from bs4 import BeautifulSoup
 import time
+from datetime import datetime
+from pybaseball import statcast
 
 def savant_search(season, team, home_road, csv=False, sep=';'):
     """Return detail-level Baseball Savant search results.
@@ -145,6 +147,35 @@ def player_map(player_ids):
 # Grabs all game data from 2017 through 2021 season for all teams
 def game_file_creation(start_year=2017, end_year=2022):
     game_files(seasons=(start_year,end_year))
+    
+# Update existing game files; due to file size, not converted to pandas
+def game_file_update(file_location="data/game_files.csv"):
+    update_date = find_latest_data(file_location)
+    start = update_date.strftime('%Y-%m-%d')
+    now = datetime.now()
+    end = now.strftime('%Y-%m-%d')
+    new_data = statcast(start_dt=start, end_dt=end)
+    new_data.drop(['pitcher.1', 'fielder_2.1', 'umpire', 'spin_dir',
+                             'spin_rate_deprecated', 'break_angle_deprecated',
+                             'break_length_deprecated', 'tfs_deprecated',
+                             'tfs_zulu_deprecated'], axis=1, inplace=True)
+    new_data.to_csv(file_location, mode='a', index=False, header=False,  sep=';')
+    
+    
+def find_latest_data(file_location):
+    with open(file_location) as f:
+        f.readline()
+        first = f.readline.strip()
+        start = first.find('2',2,5)
+        end = start + 9
+        last_date = datetime.datetime.strptime(first[start,end])
+        for line in f:
+            start = line.find('2',2,5)
+            end = start + 9
+            date = datetime.datetime.strptime(line[start,end])
+            if last_date > last_date:
+                last_date = date
+    return last_date
  
 # Maps player ids and player names
 def player_map(df=None):
