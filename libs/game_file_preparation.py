@@ -15,8 +15,205 @@ def train_test_split(df,pitch_limit=100,year_sens=1000):
     train_set_year, test_set_year = prep.train_test_by_year('data/train/train_data.csv', 'data/test/test_data.csv', year_sens)
     train_setting_year = prep.pitch_limiter(train_set_year.copy(), pitch_limit)
     return train_set_year, test_set_year, train_setting_year
-        
 
+# Transforms game data into useable data for models
+class GamePrep:
+    def __init__(self, data):
+        self.event_def = ['single','double','home_run','triple','field_out',
+             'grounded_into_double_play','force_out','double_play',
+             'sac_bunt','sac_fly','fielders_choice_out','fielders_choice',
+             'sac_fly_double_play','triple_play','sac_bunt_double_play',
+             'strikeout','strikeout_double_play','field_error','walk',
+             'hit_by_pitch','catch_interf']
+        self.data = data
+        
+    def atbat_cluster(self, data):
+        attr_cols = []
+        for col in data:
+            if 'cluster_attribute' in col:
+                attr_cols.append(col)
+        cluster_col = ['cluster_' + str(i) for i in range(len(attr_cols))]
+        data[cluster_col] = data[attr_cols].apply(lambda x: x == x.max(), axis=1).astype(int) 
+        return data
+        
+    def return_matchups(self):
+        data = self.consolidate_atbat(self.data)
+        data = self.atbat_cluster(data)
+        return self.consolidate_games(data,'both')
+        
+    def return_batters(self):
+        data = self.consolidate_atbat(self.data)
+        return self.consolidate_games(data,'batter')
+        
+    def return_pitchers(self):
+        data = self.consolidate_atbat(self.data)
+        data = self.atbat_cluster(data)
+        return self.consolidate_games(data,'pitcher')
+    
+    # consolidates atbats into useable data
+    def consolidate_atbat(self,data):
+        mask = data['events'].isin(self.event_def)
+        
+        data['atbat_game_id'] = (mask).cumsum()
+        data['pitch_count'] = data.groupby('atbat_game_id')['atbat_game_id'].count()
+        
+        atbats = data.groupby('atbat_game_id').first()
+            
+        return atbats
+    
+    # player_batter: 'batter', 'pitcher', 'both'
+    # make sure to add hard cluster first
+    # consolidates games into useable data
+    def consolidate_games(self,data, pitcher_batter='batter'):
+        data = self.data_handling(data,pitcher_batter)
+        agg_dict = self.agg_dict_def(data.columns,pitcher_batter)
+        if pitcher_batter == 'both':
+            return data.groupby(['game_date', 'pitcher', 'batter']).agg(agg_dict)
+        elif pitcher_batter=='pitcher' or pitcher_batter=='batter':
+            return data.groupby(['game_date', pitcher_batter]).agg(agg_dict)
+        else:
+            raise ValueError
+            
+    # defines operations for consolidate_games()
+    def agg_dict_def(self,list_vars,pitcher_batter):
+        sum_var = ['bb','k','pitch_count','pa']
+        count_var = []
+        first_var = ['game_date']
+        mean_var = ['estimated_ba_using_speedangle']
+        if pitcher_batter=='both':
+            first_var.append('pitcher')
+            first_var.append('batter')
+        else:
+            first_var.append(pitcher_batter)
+        for col in list_vars:
+            if 'team' in col:
+                first_var.append(col)
+            elif 'list' in col:
+                # data_handling() already formatted into list
+                first_var = first_var.append(col)
+            elif 'max' in col:
+                # data_handling() already found max
+                first_var = first_var.append(col)
+            elif 'min' in col:
+                # data_handling() already found min
+                first_var = first_var.append(col)
+            elif 'attribute' in col:
+                mean_var = mean_var.append(col)
+            elif 'cluster' in col:
+                sum_var = sum_var.append(col)
+        agg_dict = {}
+        for item in sum_var:
+            agg_dict[item] = 'sum'
+        for item in count_var:
+            agg_dict[item] = 'count'
+        for item in first_var:
+            agg_dict[item] = 'first'
+        for item in mean_var:
+            agg_dict[item] = 'mean'
+        return agg_dict
+    
+    # formats atbat data into data to be used for day consolidation
+    def data_handling(self,data, pitcher_batter):
+        data['k'] = data['events'].apply(lambda x: 1 if x in ['strikeout','strikeout_double_play'] else 0)
+        data['bb'] = data['events'].apply(lambda x: 1 if x in ['walk'] else 0)
+        data['pa'] = 1
+        if pitcher_batter == 'both':
+            grouped = data.groupby(['game_date', 'pitcher', 'batter'])
+        elif pitcher_batter=='pitcher' or pitcher_batter=='batter':
+            grouped = data.groupby(['game_date', pitcher_batter])
+        else:
+            raise ValueError
+        for col in data.columns:
+            if 'attribute' in col and 'cluster' in col:
+                data[col+'_max'] = grouped[col].max()
+                data[col+'_min'] = grouped[col].min()
+                data[col+'_list'] = grouped[col].apply(list)
+            elif 'attribute' in col or 'cluster' in col:
+                data[col+'_list'] = grouped[col].apply(list)
+            #elif col == 'estimated_ba_using_speedangle' or col == 'events':
+            #    data[col+'_list'] = grouped[col].apply(list)
+        return data
+
+# Used for prepping data prior to training it    
+class TrainPrep:
+    def __init__(self, data):
+        self.data = data
+        self.event_def = ['single','double','home_run','triple','field_out',
+                      'grounded_into_double_play','force_out','double_play',
+                     'sac_bunt','sac_fly','fielders_choice_out','fielders_choice',
+                     'sac_fly_double_play','triple_play','sac_bunt_double_play',
+                     'strikeout','strikeout_double_play','field_error','walk',
+                     'hit_by_pitch','catch_interf']
+        
+    # Splits dataset into train and test set
+    def train_test_by_year(self, file_name_train, file_name_test, year_sens=1000):
+        temp_df = self.data[self.data.game_year.notna()]
+        recent_year_list = list(temp_df['game_year'].unique())
+        
+        recent_year = recent_year_list[-1]
+        
+        found = False
+        
+        while not found:
+            #print(recent_year)
+            mask = self.data.game_year == recent_year
+            #print(self.data.loc[mask,'game_pk'].nunique())
+            if self.data.loc[mask,'game_pk'].nunique() >= year_sens:
+                found = True
+            else:
+                recent_year -= 1
+             
+        self.data['game_date'] = pd.to_datetime(self.data['game_date'], format='%Y-%m-%d', errors='coerce')
+        train_set = self.data[self.data.game_date.dt.year < int(recent_year)]
+        test_set = self.data[self.data.game_date.dt.year == int(recent_year)]
+        
+        train_set.to_csv(file_name_train)
+        test_set.to_csv(file_name_test)
+        
+        return train_set, test_set
+    
+    # Returns only pitchers in data set with a certain number of pitches thrown
+    def pitch_limiter(self, data=None, pitch_limit=100):
+        if data is not None:
+            data = self.remove_nulls(data)
+        else:
+            data = self.remove_nulls(self.data)
+        
+        temp_df = pd.DataFrame()
+        
+        for pitcher in data.pitcher.unique():
+            for game_year in data.game_year.unique():
+                
+                data_temp = data[(data.pitcher==pitcher) & (data.game_year==game_year)].copy()
+                
+                if len(data_temp.index) >= pitch_limit:
+                    temp_df = temp_df.append(data_temp)
+                    # data.drop(data[data_temp].index, inplace=True)
+                    
+        return temp_df
+    
+    # Returns selection of pitchers based on list of attributes [player_id, game_year]
+    def return_df(self, array_players, pitcher=True):
+        temp_df = pd.DataFrame()
+        counter = 0
+        max_counter = len(array_players)
+        for entry in array_players:
+            if pitcher == True:
+                df_app = self.data[(self.data.pitcher == entry[0]) & (self.data.game_year == entry[1])]
+            elif pitcher == False:
+                df_app = self.data[(self.data.batter == entry[0]) & (self.data.game_year == entry[1])]
+            temp_df = temp_df.append(df_app)
+            counter += 1
+            print(str(counter) + '/' + str(max_counter))
+        return temp_df
+        
+    
+    def remove_nulls(self, data):
+        for column in data.columns:
+            data.drop(data[data[column].isna()].index, inplace=True)
+        return data.reindex()
+       
+"""
 class GamePrep:
     def __init__(self, data, game_condensed_list=None, weight=1000.0):
         self.data = data.sort_values(['game_date','pitcher','batter'])
@@ -187,10 +384,12 @@ class GamePrep:
         return game_db
     
     """
+    """
     The below code returns a list of games in which the atbats are consolidated
     into a single entry. For this done on original data, see self.df_condensed.
     For further use, the data must be designated as for batter or pitcher, and 
     condensed into singular game information.
+    """
     """
     
     # returns dataset of consolidated atbats
@@ -300,84 +499,4 @@ class GamePrep:
         games = [self.data[self.data.game_date == date].copy() for date in self.data.game_date.unique()]
         print("games separated")
         return games
-    
-
-
-# Used for prepping data prior to training it    
-class TrainPrep:
-    def __init__(self, data):
-        self.data = data
-        self.event_def = ['single','double','home_run','triple','field_out',
-                      'grounded_into_double_play','force_out','double_play',
-                     'sac_bunt','sac_fly','fielders_choice_out','fielders_choice',
-                     'sac_fly_double_play','triple_play','sac_bunt_double_play',
-                     'strikeout','strikeout_double_play','field_error','walk',
-                     'hit_by_pitch','catch_interf']
-        
-    # Splits dataset into train and test set
-    def train_test_by_year(self, file_name_train, file_name_test, year_sens=1000):
-        temp_df = self.data[self.data.game_year.notna()]
-        recent_year_list = list(temp_df['game_year'].unique())
-        
-        recent_year = recent_year_list[-1]
-        
-        found = False
-        
-        while not found:
-            #print(recent_year)
-            mask = self.data.game_year == recent_year
-            #print(self.data.loc[mask,'game_pk'].nunique())
-            if self.data.loc[mask,'game_pk'].nunique() >= year_sens:
-                found = True
-            else:
-                recent_year -= 1
-             
-        self.data['game_date'] = pd.to_datetime(self.data['game_date'], format='%Y-%m-%d', errors='coerce')
-        train_set = self.data[self.data.game_date.dt.year < int(recent_year)]
-        test_set = self.data[self.data.game_date.dt.year == int(recent_year)]
-        
-        train_set.to_csv(file_name_train)
-        test_set.to_csv(file_name_test)
-        
-        return train_set, test_set
-    
-    # Returns only pitchers in data set with a certain number of pitches thrown
-    def pitch_limiter(self, data=None, pitch_limit=100):
-        if data is not None:
-            data = self.remove_nulls(data)
-        else:
-            data = self.remove_nulls(self.data)
-        
-        temp_df = pd.DataFrame()
-        
-        for pitcher in data.pitcher.unique():
-            for game_year in data.game_year.unique():
-                
-                data_temp = data[(data.pitcher==pitcher) & (data.game_year==game_year)].copy()
-                
-                if len(data_temp.index) >= pitch_limit:
-                    temp_df = temp_df.append(data_temp)
-                    # data.drop(data[data_temp].index, inplace=True)
-                    
-        return temp_df
-    
-    # Returns selection of pitchers based on list of attributes [player_id, game_year]
-    def return_df(self, array_players, pitcher=True):
-        temp_df = pd.DataFrame()
-        counter = 0
-        max_counter = len(array_players)
-        for entry in array_players:
-            if pitcher == True:
-                df_app = self.data[(self.data.pitcher == entry[0]) & (self.data.game_year == entry[1])]
-            elif pitcher == False:
-                df_app = self.data[(self.data.batter == entry[0]) & (self.data.game_year == entry[1])]
-            temp_df = temp_df.append(df_app)
-            counter += 1
-            print(str(counter) + '/' + str(max_counter))
-        return temp_df
-        
-    
-    def remove_nulls(self, data):
-        for column in data.columns:
-            data.drop(data[data[column].isna()].index, inplace=True)
-        return data.reindex()
+"""    
