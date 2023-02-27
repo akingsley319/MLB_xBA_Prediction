@@ -6,7 +6,21 @@ The purpose of this project is to perform expected Batting Average (xBA) predict
 
 The final project will involve predictions based on the recent performance of batters and pitchers, as well as matchup potential. This matchup potential will involve the use of Statcast pitch data, which involves 23 different metrics detailing the path of the pitched baseball, from the release point to when it crosses home plate. This data was standardized across all MLB ballparks in 2017.
 
-![Evaluation Table](images/mytable.png)
+## Evaluation of Models
+
+The metrics listed below are as follows
+
+* mae: mean absolute error
+* mse: mean squared error
+* wmae: weighted mean absolute error
+
+"wmae" is weighted by the number of plate appearances contained by that player. The more plate appearances contained in that player's appearances for the day, the more heavily it is weighted in the mean absolute error calculation.
+
+This weighted version attempts to acknowledge the inherently random nature of performance for hitting a baseball over the course of so few plate appearances and the small differences in where a baseball is hit, which has a high effect on quality of contact.
+
+While this is good for batters, who normally encounter between 1 and 4 plate appearances in a game based on role and position in the batting order, this could negatively affect pitcher evaluation based on this metric. That is because it weighs starting pitchers much more heavily than relief pitchers, although relief pitchers are generally viewed as much more volatile in terms of performance over the course of an entire season.
+
+![Evaluation Metric Table](images/mytable.png)
 
 ## Project Use
 
