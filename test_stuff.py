@@ -9,9 +9,12 @@ import sys
 sys.path.insert(0, './libs')
 
 import plot_results as pr
+import dataframe_image as dfi
 
 test = pr.ResultsTable()
 
 test.all_results()
 test.performance_block
 test.save_table()
+test.performance_block.set_index('model_type')
+dfi.export(test.performance_block.set_index('model_type'),'images/mytable.png')
