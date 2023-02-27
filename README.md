@@ -6,6 +6,8 @@ The purpose of this project is to perform expected Batting Average (xBA) predict
 
 The final project will involve predictions based on the recent performance of batters and pitchers, as well as matchup potential. This matchup potential will involve the use of Statcast pitch data, which involves 23 different metrics detailing the path of the pitched baseball, from the release point to when it crosses home plate. This data was standardized across all MLB ballparks in 2017.
 
+![Evaluation Table](images/mytable.png)
+
 ## Project Use
 
 
