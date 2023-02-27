@@ -20,7 +20,7 @@ This weighted version attempts to acknowledge the inherently random nature of pe
 
 While this is good for batters, who normally encounter between 1 and 4 plate appearances in a game based on role and position in the batting order, this could negatively affect pitcher evaluation based on this metric. That is because it weighs starting pitchers much more heavily than relief pitchers, although relief pitchers are generally viewed as much more volatile in terms of performance over the course of an entire season.
 
-=======
+![Evaluation Metric Table](images/mytable.png)
 
 ## Project Use
 
