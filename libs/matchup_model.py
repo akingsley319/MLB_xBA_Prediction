@@ -18,12 +18,12 @@ from sklearn.model_selection import RandomizedSearchCV
 def matchup_prep(df):
     matchup_prep = sd.MatchupPrep()
     
-    temp_data = matchup_prep.data_prep(df)
+    temp_data, pa_data = matchup_prep.data_prep(df)
     
     X = temp_data.loc[:,~temp_data.columns.isin(['estimated_ba_using_speedangle'])]
     y = temp_data.loc[:,temp_data.columns.isin(['estimated_ba_using_speedangle'])]
     
-    return X, y
+    return X, y, pa_data
 
 def matchup_perf(x_train,y_train,param_grid=None,intense=False,save=False):
     matchup_model = Matchup()

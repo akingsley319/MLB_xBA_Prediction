@@ -79,7 +79,7 @@ class MatchupPrep(GenericPrep):
         pitcher_soft_data = self.rolling_cluster_soft(data,depth_num,depth_min_pitcher,depth_type)
         batter_data = self.rolling_batter(data,depth_num,depth_min_batter,depth_type)
         
-        data = data.loc[:,['pitcher','batter','estimated_ba_using_speedangle']]
+        data = data.loc[:,['pitcher','batter','estimated_ba_using_speedangle','pa']]
         data.dropna(inplace=True)
         
         data = data.set_index(['pitcher',data.index])
@@ -90,8 +90,9 @@ class MatchupPrep(GenericPrep):
         data = data.join(batter_data,on=['batter','game_date'])
         
         data = data.set_index(['pitcher',data.index])
+        data.dropna(inplace=True)
         
-        return data.dropna()
+        return data.loc[:,~data.columns.isin(['pa'])], data['pa']
     
     # COmbines batter steps
     def rolling_batter(self,data,depth_num,depth_min=10,depth_type='D'):
@@ -426,7 +427,7 @@ class BatterPrep(GenericPrep):
         
         for batter in batters:
             temp_df = data[data.batter == batter]
-            pd_out = pd_out.append(temp_df.asfreq('D'))
+            pd_out = pd.concat([pd_out,temp_df.asfreq('D')])
             pd_out['batter'].fillna(batter, inplace=True)
             
         data = pd_out

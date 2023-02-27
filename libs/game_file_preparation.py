@@ -383,14 +383,16 @@ class GamePrep:
 
         return game_db
     
-    """
-    """
+
+    # fjkd
+
     The below code returns a list of games in which the atbats are consolidated
     into a single entry. For this done on original data, see self.df_condensed.
     For further use, the data must be designated as for batter or pitcher, and 
     condensed into singular game information.
-    """
-    """
+
+    #kfjkd
+
     
     # returns dataset of consolidated atbats
     # For binning games, this might be where to do it
