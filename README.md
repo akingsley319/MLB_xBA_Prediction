@@ -28,10 +28,10 @@ The models evaluated are listed below:
 * combined: This model is a Random Forest Model built on matchup specific performance of pitchers and batters. The predicted values from the batter and pitcher models are included with the pitcher's pitch data, along with the the past pitch data of pitchers and batterrecent performance against all pitch types.
 * stacked: This model is a Random Forest Model built on matchup specific performance of pitchers and batters. The predicted values from the batter, pitcher, and matchup models are used to make this prediction.
 
-### Train Dataset Evaluation
+### Train Dataset Evaluation (2017-2021 Seasons)
 ![Evaluation Metric Table: Train](images/train_evaluation.png)
 
-### Test Dataset Evaluation
+### Test Dataset Evaluation (2023 Season)
 ![Evaluation Metric Table: Test](images/test_evaluation.png)
 
 ## Project Use
