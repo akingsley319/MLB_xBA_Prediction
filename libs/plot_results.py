@@ -58,7 +58,7 @@ class ResultsTable():
         train_entry = ['batter', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['batter', self.mae(test_true,test_pred), 
-                       self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
+                       self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
         print('Batter Model Evaluated')
@@ -68,7 +68,7 @@ class ResultsTable():
         train_entry = ['pitcher', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['pitcher', self.mae(test_true,test_pred), 
-                       self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
+                       self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
         print('Pitcher Model Evaluated')
@@ -78,7 +78,7 @@ class ResultsTable():
         train_entry = ['matchup', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['matchup', self.mae(test_true,test_pred), 
-                       self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
+                       self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
         print('Matchup Model Evaluated')
@@ -88,7 +88,7 @@ class ResultsTable():
         train_entry = ['stacked', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['stacked', self.mae(test_true,test_pred), 
-                       self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
+                       self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
         print('Stacked Model Evaluated')
@@ -98,7 +98,7 @@ class ResultsTable():
         train_entry = ['combined', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['combined', self.mae(test_true,test_pred), 
-                       self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
+                       self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
         print('Combined Model Evaluated')
