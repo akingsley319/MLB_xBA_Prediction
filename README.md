@@ -20,7 +20,19 @@ This weighted version attempts to acknowledge the inherently random nature of pe
 
 While this is good for batters, who normally encounter between 1 and 4 plate appearances in a game based on role and position in the batting order, this could negatively affect pitcher evaluation based on this metric. That is because it weighs starting pitchers much more heavily than relief pitchers, although relief pitchers are generally viewed as much more volatile in terms of performance over the course of an entire season.
 
-![Evaluation Metric Table](images/mytable.png)
+The models evaluated are listed below:
+
+* batter: This is a Random Forest Model built on past performance from batters. Pitchers are not taken into account. Rolling xBA, strikeouts, and walks are the model features.
+* pitcher: This is a Random Forest Model built on past performance from pitchers. Batters are not taken into account. Rolling xBA, strikeouts, walks, and past pitch data.
+* matchup: This model is a Random Forest Model built on matchup specific performance of pitchers and batters. Rolling xBA, strikeouts, and walks of both players are taken into account. The past pitch data of pitchers and batter recent performance against all pitch types are also taken into account.
+* combined: This model is a Random Forest Model built on matchup specific performance of pitchers and batters. The predicted values from the batter and pitcher models are included with the pitcher's pitch data, along with the the past pitch data of pitchers and batterrecent performance against all pitch types.
+* stacked: This model is a Random Forest Model built on matchup specific performance of pitchers and batters. The predicted values from the batter, pitcher, and matchup models are used to make this prediction.
+
+### Train Dataset Evaluation
+![Evaluation Metric Table: Train](images/train_evaluation.png)
+
+### Test Dataset Evaluation
+![Evaluation Metric Table: Test](images/test_evaluation.png)
 
 ## Project Use
 
@@ -39,10 +51,10 @@ Future improvements that are planned to be added include:
 
 * Cluster optimization to improve matchup model results.
 * Add the ability to introduce weight to pitches in an at bat for batter performance calculation. Currently, only the final pitch in the at bat is used.
-* Implement better and faster for initial file preparation.
+* Implement better and faster code for initial file preparation.
 * Introduce new models to test against the current models in place.
-* Introduce updateable graphs to this README.md for easier result viewing.
-* Enable the project to update the information it has stored in terms of game files.
+* Introduce updateable graphs to this README.md for easier result viewing of clustered pitches.
+* Enable the project to update the information it has stored in terms of game files (code is in place, but the environment is not).
 
 ## Resources
 
