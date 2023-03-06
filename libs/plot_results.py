@@ -25,17 +25,16 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 # type = "batters","pitchers","matchups"
 class ResultsTable():
     def __init__(self,x=None,y=None):
-        self.performance_block = pd.DataFrame(columns=['test','model_type','mae','mse','wmae'])
+        self.train_block = pd.DataFrame(columns=['model_type','mae','mse','wmae'])
+        self.test_block = pd.DataFrame(columns=['model_type','mae','mse','wmae'])
     
     # saves performance_block as a table
     def save_table(self):
-        dfi.export(self.performance_block.set_index('model_type'),'images/mytable.png')  # where df is your data frame
+        dfi.export(self.train_block.set_index('model_type'),'images/train_evaluation.png')
+        dfi.export(self.test_block.set_index('model_type'),'images/test_evaluation.png')
     
     # evaluation metrics
     def wmae(self,true,pred,weights=None):
-        print(true.shape)
-        print(pred.shape)
-        print(weights.shape)
         return np.average(abs(true-pred),weights=weights)
     
     def mae(self,true,pred):
@@ -56,52 +55,52 @@ class ResultsTable():
     def batter_results(self):
         train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.batter_predicted()
 
-        train_entry = [False, 'batter', self.mae(train_true,train_pred), 
+        train_entry = ['batter', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        test_entry = [True, 'batter', self.mae(test_true,test_pred), 
+        test_entry = ['batter', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        self.performance_block.loc[len(self.performance_block)] = train_entry
-        self.performance_block.loc[len(self.performance_block)] = test_entry
+        self.train_block.loc[len(self.train_block)] = train_entry
+        self.test_block.loc[len(self.test_block)] = test_entry
         print('Batter Model Evaluated')
         
     def pitcher_results(self):
         train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.pitcher_predicted()
-        train_entry = [False, 'pitcher', self.mae(train_true,train_pred), 
+        train_entry = ['pitcher', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        test_entry = [True, 'pitcher', self.mae(test_true,test_pred), 
+        test_entry = ['pitcher', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        self.performance_block.loc[len(self.performance_block)] = train_entry
-        self.performance_block.loc[len(self.performance_block)] = test_entry
+        self.train_block.loc[len(self.train_block)] = train_entry
+        self.test_block.loc[len(self.test_block)] = test_entry
         print('Pitcher Model Evaluated')
     
     def matchup_results(self):
         train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.matchup_predicted()
-        train_entry = [False, 'matchup', self.mae(train_true,train_pred), 
+        train_entry = ['matchup', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        test_entry = [True, 'matchup', self.mae(test_true,test_pred), 
+        test_entry = ['matchup', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        self.performance_block.loc[len(self.performance_block)] = train_entry
-        self.performance_block.loc[len(self.performance_block)] = test_entry
+        self.train_block.loc[len(self.train_block)] = train_entry
+        self.test_block.loc[len(self.test_block)] = test_entry
         print('Matchup Model Evaluated')
     
     def stacked_results(self):
         train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.stacked_predicted()
-        train_entry = [False, 'stacked', self.mae(train_true,train_pred), 
+        train_entry = ['stacked', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        test_entry = [True, 'stacked', self.mae(test_true,test_pred), 
+        test_entry = ['stacked', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        self.performance_block.loc[len(self.performance_block)] = train_entry
-        self.performance_block.loc[len(self.performance_block)] = test_entry
+        self.train_block.loc[len(self.train_block)] = train_entry
+        self.test_block.loc[len(self.test_block)] = test_entry
         print('Stacked Model Evaluated')
     
     def combined_results(self):
         train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.combined_predicted()
-        train_entry = [False, 'combined', self.mae(train_true,train_pred), 
+        train_entry = ['combined', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        test_entry = [True, 'combined', self.mae(test_true,test_pred), 
+        test_entry = ['combined', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
-        self.performance_block.loc[len(self.performance_block)] = train_entry
-        self.performance_block.loc[len(self.performance_block)] = test_entry
+        self.train_block.loc[len(self.train_block)] = train_entry
+        self.test_block.loc[len(self.test_block)] = test_entry
         print('Combined Model Evaluated')
     
     # Retrieves the necessary data, prepares the data, and returns the true
