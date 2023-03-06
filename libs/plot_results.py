@@ -11,6 +11,8 @@ sys.path.insert(0, './libs')
 import pitcher_model as pm
 import batter_model as bm
 import matchup_model as mm
+import combined_model as cm
+import stacked_model as sm
 
 import matplotlib.pyplot as plt
 import dataframe_image as dfi
@@ -31,6 +33,9 @@ class ResultsTable():
     
     # evaluation metrics
     def wmae(self,true,pred,weights=None):
+        print(true.shape)
+        print(pred.shape)
+        print(weights.shape)
         return np.average(abs(true-pred),weights=weights)
     
     def mae(self,true,pred):
@@ -44,8 +49,8 @@ class ResultsTable():
         self.batter_results()
         self.pitcher_results()
         self.matchup_results()
-        #self.stacked_results()
-        #self.combined_results()
+        self.stacked_results()
+        self.combined_results()
     
     # Saves model results to self.performance block
     def batter_results(self):
@@ -133,20 +138,20 @@ class ResultsTable():
     
     def stacked_predicted(self):
         train, test = self.retrieve_data('matchups')
-        x_train, y_train, train = mm.matchup_prep(train)
-        x_test, y_test, test = mm.matchup_prep(test)
-        train_weights = train['pa']
-        test_weights = test['pa']
+        batter_train, batter_test = self.retrieve_data('batters')
+        pitcher_train, pitcher_test = self.retrieve_data('pitchers')
+        x_train, y_train, train_weights = sm.stacked_prep(train,batter_train,pitcher_train)
+        x_test, y_test, test_weights = sm.stacked_prep(test,batter_test,pitcher_test)
         with open(r"models/stacked_model.pkl", "rb") as input_file:
             model = pkl.load(input_file)
         return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
     
     def combined_predicted(self):
         train, test = self.retrieve_data('matchups')
-        x_train, y_train, train = mm.matchup_prep(train)
-        x_test, y_test, test = mm.matchup_prep(test)
-        train_weights = train['pa']
-        test_weights = test['pa']
+        batter_train, batter_test = self.retrieve_data('batters')
+        pitcher_train, pitcher_test = self.retrieve_data('pitchers')
+        x_train, y_train, train_weights = cm.combined_prep(train,batter_train,pitcher_train)
+        x_test, y_test, test_weights = cm.combined_prep(test,batter_test,pitcher_test)
         with open(r"models/combined_model.pkl", "rb") as input_file:
             model = pkl.load(input_file)
         return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)
