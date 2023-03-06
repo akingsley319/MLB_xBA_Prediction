@@ -14,8 +14,8 @@ import dataframe_image as dfi
 test = pr.ResultsTable()
 
 test.stacked_results()
-test.performance_block
+
+test.train_block
+test.test_block
 
 test.save_table()
-test.performance_block.set_index('model_type')
-dfi.export(test.performance_block.set_index('model_type'),'images/mytable.png')
