@@ -31,7 +31,7 @@ The models evaluated are listed below:
 ### Train Dataset Evaluation (2017-2021 Seasons)
 ![Evaluation Metric Table: Train](images/train_evaluation.png)
 
-### Test Dataset Evaluation (2023 Season)
+### Test Dataset Evaluation (2022 Season)
 ![Evaluation Metric Table: Test](images/test_evaluation.png)
 
 ## Project Use
