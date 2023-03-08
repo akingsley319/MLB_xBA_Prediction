@@ -130,7 +130,6 @@ class ResultsTable():
         train, test = self.retrieve_data('matchups')
         x_train, y_train, train_weights = mm.matchup_prep(train)
         x_test, y_test, test_weights = mm.matchup_prep(test)
-        test_weights = test['pa']
         with open(r"models/matchup.pkl", "rb") as input_file:
             model = pkl.load(input_file)
         return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
