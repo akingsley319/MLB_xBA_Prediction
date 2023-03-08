@@ -19,8 +19,9 @@ def matchup_prep(df):
     matchup_prep = sd.MatchupPrep()
     
     temp_data, pa_data = matchup_prep.data_prep(df)
+    temp_data.dropna(inplace=True)
     
-    X = temp_data.loc[:,~temp_data.columns.isin(['estimated_ba_using_speedangle'])]
+    X = temp_data.loc[:,~temp_data.columns.isin(['estimated_ba_using_speedangle','pa'])]
     y = temp_data.loc[:,temp_data.columns.isin(['estimated_ba_using_speedangle'])]
     
     return X, y, pa_data

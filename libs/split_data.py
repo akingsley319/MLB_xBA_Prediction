@@ -92,7 +92,9 @@ class MatchupPrep(GenericPrep):
         data = data.set_index(['pitcher',data.index])
         data.dropna(inplace=True)
         
-        return data.loc[:,~data.columns.isin(['pa'])], data['pa']
+        df = data.loc[data['pa'] != 0]
+        
+        return df.loc[:,~df.columns.isin(['pa'])], df['pa']
     
     # COmbines batter steps
     def rolling_batter(self,data,depth_num,depth_min=10,depth_type='D'):
