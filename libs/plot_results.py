@@ -14,13 +14,107 @@ import matchup_model as mm
 import combined_model as cm
 import stacked_model as sm
 
+import matplotlib
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import dataframe_image as dfi
 import numpy as np
 import pandas as pd
 import pickle as pkl
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+def cluster_plots(cluster_plots_obj):
+    hist_cols = ['pitch_type','p_throws','effective_speed','release_speed']
+    scatter_3d = [('release_speed','spin_x','spin_z'),
+                  ('release_pos_x','release_pos_y','release_pos_z')]
+    scatter_2d = [('spin_x','spin_z'),('spin_x','release_speed'),
+                  ('release_speed','spin_z'),('release_pos_x','release_pos_z'),
+                  ('release_pos_x','release_pos_y'),('release_pos_y','release_pos_z')]
+    for item in hist_cols:
+        cluster_plots_obj.hist_graph(item)
+    for item in scatter_3d:
+        cluster_plots_obj.scatter_3d(item[0],item[1],item[2])
+    for item in scatter_2d:
+        cluster_plots_obj.scatter_2d(item[0],item[1])
+
+class ClusterPlots():
+    def __init__(self):
+        self.data = None
+        self.cluster_cols = None # the cluster defining columns
+        self.pitch_features = ['release_speed','release_pos_x','release_pos_z',
+                               'pfx_x','pfx_z','plate_x','plate_z','vx0','vy0',
+                               'vz0','ax','ay','az', 'effective_speed',
+                               'release_spin_rate','release_extension',
+                               'release_pos_y','spin_x', 'spin_z']
+        self.retrieve_data()
+        self.define_cols()
+        self.clusters_close = {} # n closest points for each cluster
+        n = 500 # The number of pitches closest to cluster center used in plots
+        for atr in self.cluster_cols:
+            self.clusters_close[atr] = self.data.nlargest(n,atr)
+        
+    # saves a 2d-scatterplot, separating clusters by color
+    def scatter_2d(self,x,y):
+        fig = plt.figure(figsize=(11, 11))
+        ax = fig.add_subplot(111)    
+        for i in range(0,len(self.cluster_cols)):
+            df_temp = self.clusters_close[self.cluster_cols[i]]
+            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i])
+            ax.set_xlabel(x)
+            ax.set_ylabel(y)
+            ax.set_title("Scatter of " + x + ", " + y)    
+        plt.legend()
+        image_name = 'images/cluster/scatter_2d' + x + '_' + y + '_scatter_2d' + '.png'
+        plt.savefig(image_name, bbox_inches='tight')
+        plt.show()
+        
+    # saves a 3d-scatterplot, separating clusters by color
+    def scatter_3d(self,x,y,z):
+        fig = plt.figure(figsize=(27, 22))
+        plt.title = ("Scatter of " + str(x) + ", " + str(y) + ", " + str(z))
+        ax = fig.add_subplot(111, projection='3d')
+        for i in range(0,len(self.cluster_cols)):
+            df_temp = self.clusters_close[self.cluster_cols[i]]
+            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i])
+            ax.set_xlabel('release_speed')
+            ax.set_ylabel(x)
+            ax.set_zlabel(y)
+            ax.set_title(z)
+        plt.legend()
+        image_name = 'images/cluster/scatter_3d' + x + '_' + y + '_' + z + '_scatter_3d' + '.png'
+        plt.savefig(image_name, bbox_inches='tight')
+        plt.show()
+       
+    # saves a histogram of each cluster by a defined columns; a multi-plot (3xn)
+    def hist_graph(self,col):
+        fig = plt.figure(figsize=(27, 22))
+        for i in range(0,len(self.cluster_cols)):
+            ax=fig.add_subplot(4,3,i+1)
+            plt.subplot(4, 3, i+1)
+            clust_name = self.cluster_cols[i]
+            plt.title(str(clust_name))
+            df_temp = self.clusters_close[clust_name]
+            plt.hist(df_temp[col].dropna())
+            plt.margins(0.05)
+        fig.suptitle("Plot of " + str(col),fontsize=50)
+        img_name = 'images/cluster/hist' + col + '_hist' + '.png'
+        plt.savefig(img_name, bbox_inches='tight')
+        plt.show()
+        
+    # retrieves and transforms the training dataset for analysis
+    def retrieve_data(self):
+        train = pd.read_csv('data/train/train_set.csv')
+        with open(r"models/standardize_pitching_data.pkl", "rb") as input_file:
+            model = pkl.load(input_file)
+        train[self.pitch_features] = model.inverse_transform(train[self.pitch_features])
+        train.dropna(subset=self.pitch_features, inplace=True)
+        self.data = train
+    
+    # returns the cluster attribution of each pitch
+    def define_cols(self):
+        self.cluster_cols = [col for col in self.data.columns if 'cluster' in col]
+        
 
 # type = "batters","pitchers","matchups"
 class ResultsTable():
