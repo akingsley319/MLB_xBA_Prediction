@@ -34,8 +34,65 @@ The models evaluated are listed below:
 ### Test Dataset Evaluation (2022 Season)
 ![Evaluation Metric Table: Test](images/test_evaluation.png)
 
-## Project Use
+## Cluster Analysis
 
+Each cluster is represented by the 500 closest cluster points to the cluster center.
+
+### Histogram: Plots of Feature by Cluster
+
+Shows the representation of pitch type in each cluster.
+
+![Pitch Type](images/cluster/pitch_type_hist.png)
+
+Displays the handedness of the pitcher in each cluster.
+
+![Handedness](images/cluster/p_throws_hist.png)
+
+Displays the release velocity of each pitch in each cluster.
+
+![Release Speed](images/cluster/release_speed_hist.png)
+
+Displays the effective speed of each pitch in each cluster. This is a calculation done involving velocity taken at 3 point in a pitch's travel to home plate and the release point, drepresenting a percieved speed of the pitch to the batter.
+
+![Effective Speed](images/cluster/effective_speed_hist.png)
+
+### Scatter of Velocity, Spin x, and Spin z
+
+release_speed = velocity of baseball as it leaves the release point of the pitcher
+spin_x = spin rate in direction of first to third base (vertical axis)
+spin_z = spin rate in direction of pitcher mound to home plate (horizontal axis from first to third)
+
+The spin will translate to movement in the opposit direction.
+
+![Scatter 3d: release_speed, spin_x,spin_z](images/cluster/scatter_3d/release_speed_spin_x_spin_z_scatter_3d.png)
+
+![Scatter 2d: spin_x, spin_z](images/cluster/scatter_2d/spin_x_spin_z_scatter_2d.png)
+
+![Scatter 2d: Horizontal Spin vs Release Speed](images/cluster/scatter_2d/spin_x_release_speed_scatter_2d.png)
+
+![Scatter 2d: Release Speed vs Vertical Speed](images/cluster/scatter_2d/release_speed_spin_z_scatter_2d.png)
+
+### Scatter of Release Point
+
+release_pos_x = Horizontal Release Point from catcher perspective
+release_pos_y = Release point in feet from catcher
+release_pos_z = Vertical Release Point from catcher perspective
+
+![Scatter 3d: release_pos_x, release_pos_y, release_pos_z](images/cluster/scatter_3d/release_pos_x_release_pos_y_release_pos_z_scatter_3d.png)
+
+Release Point from the Catcher's Point of View
+
+![Scatter 2d: Release from Catcher's Point of View](images/cluster/scatter_2d/release_pos_x_release_pos_z_scatter_2d.png)
+
+Release Point from Above Point of View
+
+![Scatter 2d: Release from Above Point of View](images/cluster/scatter_2d/release_pos_x_release_pos_y_scatter_2d.png)
+
+Release Point from First Base Point of View
+
+![Scatter 2d: Release from First Base Point of View](images/cluster/scatter_2d/release_pos_y_release_pos_z_scatter_2d.png)
+
+## Project Use
 
 For a fresh file run (which will take a long time with the unoptimized code), run the "fresh_setup.py". If a player map for ids is desired - this will increase run time due to delay between runs (web scraping practice) - make sure to uncomment the line in the code.
 
