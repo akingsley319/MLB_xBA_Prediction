@@ -42,19 +42,19 @@ Each cluster is represented by the 500 closest cluster points to the cluster cen
 
 Shows the representation of pitch type in each cluster.
 
-![Pitch Type](images/cluster/pitch_type_hist.png)
+![Pitch Type](images/cluster/hist/pitch_type_hist.png)
 
 Displays the handedness of the pitcher in each cluster.
 
-![Handedness](images/cluster/p_throws_hist.png)
+![Handedness](images/cluster/hist/p_throws_hist.png)
 
 Displays the release velocity of each pitch in each cluster.
 
-![Release Speed](images/cluster/release_speed_hist.png)
+![Release Speed](images/cluster/hist/release_speed_hist.png)
 
 Displays the effective speed of each pitch in each cluster. This is a calculation done involving velocity taken at 3 point in a pitch's travel to home plate and the release point, drepresenting a percieved speed of the pitch to the batter.
 
-![Effective Speed](images/cluster/effective_speed_hist.png)
+![Effective Speed](images/cluster/hist/effective_speed_hist.png)
 
 ### Scatter of Velocity, Spin x, and Spin z
 
