@@ -8,7 +8,7 @@ Created on Thu Mar  9 15:18:15 2023
 import sys
 sys.path.insert(0, './libs')
 
-import libs.plot_results as pr
+import plot_results as pr
 import dataframe_image as dfi
 
 eval_table = pr.ResultsTable()

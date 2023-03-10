@@ -65,7 +65,7 @@ class ClusterPlots():
             ax.set_ylabel(y)
             ax.set_title("Scatter of " + x + ", " + y)    
         plt.legend()
-        image_name = 'images/cluster/scatter_2d' + x + '_' + y + '_scatter_2d' + '.png'
+        image_name = 'images/cluster/scatter_2d/' + x + '_' + y + '_scatter_2d' + '.png'
         plt.savefig(image_name, bbox_inches='tight')
         plt.show()
         
@@ -82,7 +82,7 @@ class ClusterPlots():
             ax.set_zlabel(y)
             ax.set_title(z)
         plt.legend()
-        image_name = 'images/cluster/scatter_3d' + x + '_' + y + '_' + z + '_scatter_3d' + '.png'
+        image_name = 'images/cluster/scatter_3d/' + x + '_' + y + '_' + z + '_scatter_3d' + '.png'
         plt.savefig(image_name, bbox_inches='tight')
         plt.show()
        
@@ -98,7 +98,7 @@ class ClusterPlots():
             plt.hist(df_temp[col].dropna())
             plt.margins(0.05)
         fig.suptitle("Plot of " + str(col),fontsize=50)
-        img_name = 'images/cluster/hist' + col + '_hist' + '.png'
+        img_name = 'images/cluster/hist/' + col + '_hist' + '.png'
         plt.savefig(img_name, bbox_inches='tight')
         plt.show()
         
