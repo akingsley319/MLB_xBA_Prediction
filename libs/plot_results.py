@@ -60,9 +60,9 @@ class ClusterPlots():
         ax = fig.add_subplot(111)    
         for i in range(0,len(self.cluster_cols)):
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i])
-            ax.set_xlabel(x)
-            ax.set_ylabel(y)
+            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i],alpha=0.25)
+            ax.set_xlabel(self.rename_var(x))
+            ax.set_ylabel(self.rename_var(y))
             ax.set_title("Scatter of " + x + ", " + y)    
         plt.legend()
         image_name = 'images/cluster/scatter_2d/' + x + '_' + y + '_scatter_2d' + '.png'
@@ -76,11 +76,11 @@ class ClusterPlots():
         ax = fig.add_subplot(111, projection='3d')
         for i in range(0,len(self.cluster_cols)):
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i])
-            ax.set_xlabel('release_speed')
-            ax.set_ylabel(x)
-            ax.set_zlabel(y)
-            ax.set_title(z)
+            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i],alpha=0.25)
+            ax.set_xlabel(self.rename_var(x))
+            ax.set_ylabel(self.rename_var(y))
+            ax.set_zlabel(self.rename_var(z))
+            ax.set_title("Scatter of " + x + ", " + y + ", " + z)
         plt.legend()
         image_name = 'images/cluster/scatter_3d/' + x + '_' + y + '_' + z + '_scatter_3d' + '.png'
         plt.savefig(image_name, bbox_inches='tight')
@@ -93,7 +93,7 @@ class ClusterPlots():
             ax=fig.add_subplot(4,3,i+1)
             plt.subplot(4, 3, i+1)
             clust_name = self.cluster_cols[i]
-            plt.title(str(clust_name))
+            plt.title(self.rename_var(clust_name))
             df_temp = self.clusters_close[clust_name]
             plt.hist(df_temp[col].dropna())
             plt.margins(0.05)
@@ -101,6 +101,30 @@ class ClusterPlots():
         img_name = 'images/cluster/hist/' + col + '_hist' + '.png'
         plt.savefig(img_name, bbox_inches='tight')
         plt.show()
+        
+    # Renames variables so it is easier to tell what it represents
+    def rename_var(self, x):
+        if x == "spin_x":
+            return "Spin X: Horizontal Spin from First to Third Base"
+        elif x == "spin_z":
+            return "Spin Z: Vertical Spin from Pitcher to Catcher"
+        elif x == "release_speed":
+            return "Release Speed: Velocity of Pitch at Point of Release"
+        elif x == "release_pos_x":
+            return "Horizontal Release Point from Catcher's Perspective"
+        elif x == "release_pos_y":
+            return "Release Point in feet from the Catcher"
+        elif x == "release_pos_z":
+            return "Vertical Release Point from Catcher's Perspective"
+        elif x == "p_throws":
+            return "Pitcher Handedness"
+        elif x == "effective_speed":
+            return "Effective Speed of Pitch as Viewed by Batter"
+        elif x == "pitch_type":
+            return "Pitch Type"
+        else:
+            return x
+        
         
     # retrieves and transforms the training dataset for analysis
     def retrieve_data(self):
