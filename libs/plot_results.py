@@ -24,6 +24,8 @@ import pickle as pkl
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
+from scipy.spatial import ConvexHull
+
 def cluster_plots(cluster_plots_obj):
     hist_cols = ['pitch_type','p_throws','effective_speed','release_speed']
     scatter_3d = [('release_speed','spin_x','spin_z'),
@@ -51,20 +53,25 @@ class ClusterPlots():
         self.define_cols()
         self.clusters_close = {} # n closest points for each cluster
         self.alpha = alpha # opacity of scatterplots
+        #self.color_list = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        self.color_list = []
         n = n # The number of pitches closest to cluster center used in plots
         for atr in self.cluster_cols:
             self.clusters_close[atr] = self.data.nlargest(n,atr)
+        self.define_color_list()
         
     # saves a 2d-scatterplot, separating clusters by color
     def scatter_2d(self,x,y):
         fig = plt.figure(figsize=(11, 11))
         ax = fig.add_subplot(111)    
         for i in range(0,len(self.cluster_cols)):
+            c = self.color_list[i]
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i],alpha=self.alpha)
+            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i],alpha=self.alpha,color=c)
             ax.set_xlabel(self.rename_var(x))
             ax.set_ylabel(self.rename_var(y))
-            ax.set_title("Scatter of " + x + ", " + y)    
+            ax.set_title("Scatter of " + x + ", " + y)
+            self.encircle(df_temp[x],df_temp[y],fc="none",ec=c)
         plt.legend()
         image_name = 'images/cluster/scatter_2d/' + x + '_' + y + '_scatter_2d' + '.png'
         plt.savefig(image_name, bbox_inches='tight')
@@ -76,8 +83,9 @@ class ClusterPlots():
         #plt.title = ("Scatter of " + str(x) + ", " + str(y) + ", " + str(z))
         ax = fig.add_subplot(111, projection='3d')
         for i in range(0,len(self.cluster_cols)):
+            c = self.color_list[i]
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i],alpha=self.alpha)
+            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i],alpha=self.alpha,color=c)
             ax.set_xlabel(self.rename_var(x))
             ax.set_ylabel(self.rename_var(y))
             ax.set_zlabel(self.rename_var(z))
@@ -103,6 +111,20 @@ class ClusterPlots():
         plt.savefig(img_name, bbox_inches='tight')
         plt.show()
         
+    # encircles plot points for a cluster in a scatter plot
+    def encircle(self,x,y, ax=None, **kw):
+        if not ax: ax=plt.gca()
+        p = np.c_[x,y]
+        hull = ConvexHull(p)
+        poly = plt.Polygon(p[hull.vertices,:], **kw)
+        ax.add_patch(poly)
+        
+    # creates list of colors of length equal to the number of clusters for
+    # consistent color coding in plots
+    def define_color_list(self):
+        hsv = plt.get_cmap('hsv')
+        self.color_list = hsv(np.linspace(0, 1.0, len(self.clusters_close)))
+    
     # Renames variables so it is easier to tell what it represents
     def rename_var(self, x):
         if x == "spin_x":
