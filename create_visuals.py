@@ -15,5 +15,5 @@ eval_table = pr.ResultsTable()
 eval_table.all_results()
 eval_table.save_table()
 
-clust_plots = pr.ClusterPlots()
+clust_plots = pr.ClusterPlots(n=150,alpha=0.35)
 pr.cluster_plots(clust_plots)
