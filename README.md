@@ -62,7 +62,7 @@ release_speed = velocity of baseball as it leaves the release point of the pitch
 spin_x = spin rate in direction of first to third base (vertical axis)
 spin_z = spin rate in direction of pitcher mound to home plate (horizontal axis from first to third)
 
-The spin will translate to movement in the opposit direction.
+The spin will translate to movement in the opposite direction.
 
 ![Scatter 3d: release_speed, spin_x,spin_z](images/cluster/scatter_3d/release_speed_spin_x_spin_z_scatter_3d.png)
 
