@@ -39,7 +39,7 @@ def cluster_plots(cluster_plots_obj):
         cluster_plots_obj.scatter_2d(item[0],item[1])
 
 class ClusterPlots():
-    def __init__(self):
+    def __init__(self,n=500,alpha=0.25):
         self.data = None
         self.cluster_cols = None # the cluster defining columns
         self.pitch_features = ['release_speed','release_pos_x','release_pos_z',
@@ -50,7 +50,8 @@ class ClusterPlots():
         self.retrieve_data()
         self.define_cols()
         self.clusters_close = {} # n closest points for each cluster
-        n = 500 # The number of pitches closest to cluster center used in plots
+        self.alpha = alpha # opacity of scatterplots
+        n = n # The number of pitches closest to cluster center used in plots
         for atr in self.cluster_cols:
             self.clusters_close[atr] = self.data.nlargest(n,atr)
         
@@ -60,7 +61,7 @@ class ClusterPlots():
         ax = fig.add_subplot(111)    
         for i in range(0,len(self.cluster_cols)):
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i],alpha=0.25)
+            ax.scatter(df_temp[x],df_temp[y],label=self.cluster_cols[i],alpha=self.alpha)
             ax.set_xlabel(self.rename_var(x))
             ax.set_ylabel(self.rename_var(y))
             ax.set_title("Scatter of " + x + ", " + y)    
@@ -72,11 +73,11 @@ class ClusterPlots():
     # saves a 3d-scatterplot, separating clusters by color
     def scatter_3d(self,x,y,z):
         fig = plt.figure(figsize=(27, 22))
-        plt.title = ("Scatter of " + str(x) + ", " + str(y) + ", " + str(z))
+        #plt.title = ("Scatter of " + str(x) + ", " + str(y) + ", " + str(z))
         ax = fig.add_subplot(111, projection='3d')
         for i in range(0,len(self.cluster_cols)):
             df_temp = self.clusters_close[self.cluster_cols[i]]
-            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i],alpha=0.25)
+            ax.scatter(df_temp[x],df_temp[y],df_temp[z],label=self.cluster_cols[i],alpha=self.alpha)
             ax.set_xlabel(self.rename_var(x))
             ax.set_ylabel(self.rename_var(y))
             ax.set_zlabel(self.rename_var(z))
