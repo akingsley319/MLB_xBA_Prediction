@@ -71,7 +71,7 @@ class ClusterPlots():
             ax.set_xlabel(self.rename_var(x))
             ax.set_ylabel(self.rename_var(y))
             ax.set_title("Scatter of " + x + ", " + y)
-            self.encircle(df_temp[x],df_temp[y],fc="none",ec=c)
+            self.encircle(df_temp[x],df_temp[y],ec=c,fc="none")
         plt.legend()
         image_name = 'images/cluster/scatter_2d/' + x + '_' + y + '_scatter_2d' + '.png'
         plt.savefig(image_name, bbox_inches='tight')
@@ -168,11 +168,20 @@ class ResultsTable():
     def __init__(self,x=None,y=None):
         self.train_block = pd.DataFrame(columns=['model_type','mae','mse','wmae'])
         self.test_block = pd.DataFrame(columns=['model_type','mae','mse','wmae'])
+        self.train_dates = pd.DataFrame(columns=['model_type','April','May','June','July','August','September'])
+        self.test_dates = pd.DataFrame(columns=['model_type','April','May','June','July','August','September'])
+        self.train_dates_w = pd.DataFrame(columns=['model_type','April','May','June','July','August','September'])
+        self.test_dates_w = pd.DataFrame(columns=['model_type','April','May','June','July','August','September'])
+        
     
     # saves performance_block as a table
     def save_table(self):
         dfi.export(self.train_block.set_index('model_type'),'images/train_evaluation.png')
         dfi.export(self.test_block.set_index('model_type'),'images/test_evaluation.png')
+        dfi.export(self.train_dates.set_index('model_type'),'images/train_dates_evaluation.png')
+        dfi.export(self.test_dates.set_index('model_type'),'images/test_dates_evaluation.png')
+        dfi.export(self.train_dates_w.set_index('model_type'),'images/train_dates_w_evaluation.png')
+        dfi.export(self.test_dates_w.set_index('model_type'),'images/test_dates_w_evaluation.png')
     
     # evaluation metrics
     def wmae(self,true,pred,weights=None):
@@ -194,55 +203,127 @@ class ResultsTable():
     
     # Saves model results to self.performance block
     def batter_results(self):
-        train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.batter_predicted()
-
+        train, test = self.batter_predicted()
+        train_true = train['next_estimated_ba_using_speedangle']
+        train_pred = train['train_pred']
+        train_weights = train['weights']
+        test_true = test['next_estimated_ba_using_speedangle']
+        test_pred = test['test_pred']
+        test_weights = test['weights']
         train_entry = ['batter', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['batter', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
+        self.eval_by_month(train,test,'batter')
         print('Batter Model Evaluated')
         
     def pitcher_results(self):
-        train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.pitcher_predicted()
+        train, test = self.pitcher_predicted()
+        train_true = train['estimated_ba_using_speedangle']
+        train_pred = train['train_pred']
+        train_weights = train['weights']
+        test_true = test['estimated_ba_using_speedangle']
+        test_pred = test['test_pred']
+        test_weights = test['weights']
         train_entry = ['pitcher', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['pitcher', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
+        self.eval_by_month(train,test,'pitcher','estimated_ba_using_speedangle')
         print('Pitcher Model Evaluated')
-    
+        
     def matchup_results(self):
-        train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.matchup_predicted()
+        train, test = self.matchup_predicted()
+        train_true = train['estimated_ba_using_speedangle']
+        train_pred = train['train_pred']
+        train_weights = train['weights']
+        test_true = test['estimated_ba_using_speedangle']
+        test_pred = test['test_pred']
+        test_weights = test['weights']
         train_entry = ['matchup', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['matchup', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
+        self.eval_by_month(train,test,'matchup','estimated_ba_using_speedangle')
         print('Matchup Model Evaluated')
-    
+        
     def stacked_results(self):
-        train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.stacked_predicted()
+        train, test = self.stacked_predicted()
+        train_true = train['estimated_ba_using_speedangle']
+        train_pred = train['train_pred']
+        train_weights = train['weights']
+        test_true = test['estimated_ba_using_speedangle']
+        test_pred = test['test_pred']
+        test_weights = test['weights']
         train_entry = ['stacked', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['stacked', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
+        self.eval_by_month(train,test,'stacked','estimated_ba_using_speedangle')
         print('Stacked Model Evaluated')
-    
+        
     def combined_results(self):
-        train_true, train_pred, train_weights, test_true, test_pred, test_weights = self.combined_predicted()
+        train, test = self.combined_predicted()
+        train_true = train['estimated_ba_using_speedangle']
+        train_pred = train['train_pred']
+        train_weights = train['weights']
+        test_true = test['estimated_ba_using_speedangle']
+        test_pred = test['test_pred']
+        test_weights = test['weights']
         train_entry = ['combined', self.mae(train_true,train_pred), 
                        self.mse(train_true,train_pred), self.wmae(train_true[:-1],train_pred[:-1],train_weights[1:])]
         test_entry = ['combined', self.mae(test_true,test_pred), 
                        self.mse(test_true,test_pred), self.wmae(test_true[:-1],test_pred[:-1],test_weights[1:])]
         self.train_block.loc[len(self.train_block)] = train_entry
         self.test_block.loc[len(self.test_block)] = test_entry
+        self.eval_by_month(train,test,'combined','estimated_ba_using_speedangle')
         print('Combined Model Evaluated')
+        
+    # evaluates prediction (wmae and mae) for desired model/dataset by month
+    def eval_by_month(self,train,test,model_type,true_res='next_estimated_ba_using_speedangle'):
+        train_months = [model_type]
+        train_months_w = [model_type]
+        test_months = [model_type]
+        test_months_w = [model_type]
+        if model_type == 'batter' or model_type == 'pitcher':
+            model_params = [model_type]
+        else:
+            model_params = ['batter','pitcher']
+        dfs_train,dfs_test = self.split_by_month(train, test, model_params,true_res)
+        for i in range(len(dfs_train)): # April through September
+            train_months.append(self.mae(dfs_train[i][0],dfs_train[i][1]))
+            train_months_w.append(self.wmae(dfs_train[i][0].values,dfs_train[i][1].values,dfs_train[i][2].values))
+            if i >= len(dfs_test):
+                test_months.append(None)
+                test_months_w.append(None)
+            else:
+                test_months.append(self.mae(dfs_test[i][0],dfs_test[i][1]))
+                test_months_w.append(self.wmae(dfs_test[i][0].values,dfs_test[i][1].values,dfs_test[i][2].values))
+        self.train_dates.loc[len(self.train_dates)] = train_months
+        self.test_dates.loc[len(self.test_dates)] = test_months
+        self.train_dates_w.loc[len(self.train_dates_w)] = train_months_w
+        self.test_dates_w.loc[len(self.test_dates_w)] = test_months_w
+        
+    def split_by_month(self,train,test,model_params,true_res='next_estimated_ba_using_speedangle'):
+        temp_train = train.droplevel(model_params)
+        temp_train.index = pd.to_datetime(temp_train.index)
+        temp_train = temp_train.loc[temp_train.index.month.isin([4,5,6,7,8,9])]
+        temp_train = temp_train.groupby(temp_train.index.month)
+        dfs_train = [(group[[true_res]],group[['train_pred']],group[['weights']]) for _,group in temp_train]
+        temp_test = test.droplevel(model_params)
+        temp_test.index = pd.to_datetime(temp_test.index)
+        temp_test = temp_test[temp_test.index.month.isin([4,5,6,7,8,9])]
+        temp_test = temp_test.groupby(temp_test.index.month)
+        dfs_test = [(group[[true_res]],group[['test_pred']],group[['weights']]) for _,group in temp_test]
+        return dfs_train, dfs_test
     
     # Retrieves the necessary data, prepares the data, and returns the true
     # and predicted values for the model
@@ -254,8 +335,11 @@ class ResultsTable():
         test_weights = x_test['pa']
         with open(r"models/batter_recent_performance.pkl", "rb") as input_file:
             model = pkl.load(input_file)
-        train_pred = y_train
-        return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
+        y_train['train_pred'] = model.predict(x_train)
+        y_train['weights'] = train_weights
+        y_test['test_pred'] = model.predict(x_test)
+        y_test['weights'] = test_weights
+        return y_train,y_test    
     
     def pitcher_predicted(self):
         train, test = self.retrieve_data('pitchers')
@@ -265,7 +349,11 @@ class ResultsTable():
         test_weights = x_test['pa']
         with open(r"models/pitcher_recent_performance.pkl", "rb") as input_file:
             model = pkl.load(input_file)
-        return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
+        y_train['train_pred'] = model.predict(x_train)
+        y_train['weights'] = train_weights
+        y_test['test_pred'] = model.predict(x_test)
+        y_test['weights'] = test_weights
+        return y_train, y_test    
     
     def matchup_predicted(self):
         train, test = self.retrieve_data('matchups')
@@ -273,7 +361,11 @@ class ResultsTable():
         x_test, y_test, test_weights = mm.matchup_prep(test)
         with open(r"models/matchup.pkl", "rb") as input_file:
             model = pkl.load(input_file)
-        return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
+        y_train['train_pred'] = model.predict(x_train)
+        y_train['weights'] = train_weights
+        y_test['test_pred'] = model.predict(x_test)
+        y_test['weights'] = test_weights
+        return y_train, y_test    
     
     def stacked_predicted(self):
         train, test = self.retrieve_data('matchups')
@@ -283,7 +375,11 @@ class ResultsTable():
         x_test, y_test, test_weights = sm.stacked_prep(test,batter_test,pitcher_test)
         with open(r"models/stacked_model.pkl", "rb") as input_file:
             model = pkl.load(input_file)
-        return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)    
+        y_train['train_pred'] = model.predict(x_train)
+        y_train['weights'] = train_weights
+        y_test['test_pred'] = model.predict(x_test)
+        y_test['weights'] = test_weights
+        return y_train, y_test    
     
     def combined_predicted(self):
         train, test = self.retrieve_data('matchups')
@@ -293,7 +389,11 @@ class ResultsTable():
         x_test, y_test, test_weights = cm.combined_prep(test,batter_test,pitcher_test)
         with open(r"models/combined_model.pkl", "rb") as input_file:
             model = pkl.load(input_file)
-        return self.reshape_data(y_train, model.predict(x_train), train_weights, y_test, model.predict(x_test), test_weights)
+        y_train['train_pred'] = model.predict(x_train)
+        y_train['weights'] = train_weights
+        y_test['test_pred'] = model.predict(x_test)
+        y_test['weights'] = test_weights
+        return y_train, y_test
     
     # Retrieves the necessary data, already separated by train/test set
     def retrieve_data(self,plot_type):
