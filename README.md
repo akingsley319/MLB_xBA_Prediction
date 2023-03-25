@@ -6,6 +6,33 @@ The purpose of this project is to perform expected Batting Average (xBA) predict
 
 The final project will involve predictions based on the recent performance of batters and pitchers, as well as matchup potential. This matchup potential will involve the use of Statcast pitch data, which involves 23 different metrics detailing the path of the pitched baseball, from the release point to when it crosses home plate. This data was standardized across all MLB ballparks in 2017.
 
+## Purpose
+
+The purpose of this project is to predict the expected batting average (xBA) of MLB players using recent performance. This includes making predictions for batters, pitchers, and matchup results. xBA was chosen instead of traditional batting average to respect the more probabilistic nature of hitting in baseball. xBA is largely considered a better indicator of batter and pitcher performance in an at bat instead of the more result oriented batting average, on-base percentage, strikeout rate, etc.
+
+This project was restricted to regular season games, because much of the advanced variables (statcast, launch angle, hit velocity, xBA, etc.) is missing in spring training and exhibition games. Post-season games were removed to maintain a level of consistency.
+
+## Tools Used
+
+Python: This was the coding language used.
+Principal Component Analysis (PCA): For dimensionality reduction of Statcast pitch data.
+Fuzzy-C Means/K-Means Clustering: Used for clustering Statcast pitch data.
+Random Forest Modeling: Used for final modeling and prediction.
+
+## Data Cleaning
+
+Missing xBA used the median of the hit type (single, double, etc.) by year. This was done to better capture changing philosophies for hitting. For rarer hit types, such as sacrifice bunt double play, the overall median was used to ensure that there is data to impute from.
+
+Statcast spin-rate features were translated to euclidean geometry to ensure consistent orientation for pitching variables.
+
+Missing Statcast data used Next Observation Carried Backward or Last Observation Carried Forward (attempted in that order using same day entries first) if all data was missing for that pitch or too much data to properly impute from was missing. This was done to better represent a pitcher's ability on that day. If only a few pieces of data were missing, the clusters for that pitcher was used to impute the missing data.
+
+## Process
+
+In order to better prepare for matchup based predictions, pitchers' pitches were clustered and categorized based on publicly available Statcast data. All pitchers were individually clustered using k-means to better find the ideal pitches in that pitcher's repertoire. This was done in order to separate the pitch classifier (cureveball, slider, cutter, etc.) from the types of pitches thrown. This would represent the ideal pitches each type of pitcher can throw. Each of these "ideal pitches" was then clustered again, to better represent all pitches thrown. Principal component analysis (PCA) was used for dimensionality reduction, and fuzzy-c means was used so that soft and hard clustering was made available. Hard clustering (using the highest correlation to a specific cluster) yields the same result as k-means. Silhouette score was used to determine clusters. While there are better methods to be used, this was meant to quickly perform clustering for all pitchers, and make updating overall clusters easier.
+
+For prediction, random forest models were used. Boosting algorithms such as XGBoost, AdaBoost, CatBoost, and LightGBM were all tested with minimal improvements over random forest, and so all results detailed below are using random forest. For features: rolling averages of xBA, strikeout, and walks were used for batter and pitcher models. Matchup models also included pitcher use of clustered pitch types (hard and soft) and batter performance against each pitch cluster. To calculate batter performance against each pitch type, the final pitch of each at-bat would contribute the resulting xBA to the identified pitch cluster. This is the same method used in publicly available MLB statistics regarding player performance against pitch type.
+
 ## Evaluation of Models
 
 The metrics listed below are as follows
@@ -36,7 +63,9 @@ The models evaluated are listed below:
 
 ## Cluster Analysis
 
-Each cluster is represented by the 500 closest cluster points to the cluster center.
+Each cluster is represented by the n=150 closest cluster points to the cluster center.
+
+The clusters could use improvement. It has little representation of left-handed pitchers in the available clusters. Adding a separate variable for pitcher and batter handedness in the final model could solve some issues in the matchup, combined, and stacked models. However, this would be a way to bypass poor clustering, which could more effectively improve model performance with improvements.
 
 ### Histogram: Plots of Feature by Cluster
 
@@ -110,7 +139,6 @@ Future improvements that are planned to be added include:
 * Add the ability to introduce weight to pitches in an at bat for batter performance calculation. Currently, only the final pitch in the at bat is used.
 * Implement better and faster code for initial file preparation.
 * Introduce new models to test against the current models in place.
-* Introduce updateable graphs to this README.md for easier result viewing of clustered pitches.
 * Enable the project to update the information it has stored in terms of game files (code is in place, but the environment is not).
 
 ## Resources
